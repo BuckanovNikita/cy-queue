@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "task": "Extract cy-queue from CY feature 003",
+  "scope": [
+    "src/cy_queue",
+    "tests",
+    "pyproject.toml",
+    "docs",
+    "README.md",
+    ".importlinter",
+    "ruff.toml",
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "impact": "modules",
+  "rules": "Inward layers; CY-specific integration points to CY; no reverse imports.",
+  "modules": [
+    {
+      "id": "queue",
+      "path": "src/cy_queue",
+      "change": "add",
+      "responsibility": "Own scheduling, durable records, GPU admission, guardians and CY command integration",
+      "interface": "Compatible records/configuration/locks; pipeline default or train command; both package identities",
+      "layer": "core/application/adapters/entrypoints",
+      "allowed_dependencies": [
+        "CY shared process/lifecycle/configuration interfaces",
+        "native queue dependencies"
+      ],
+      "forbidden_dependencies": [
+        "core/application imports of outer adapters"
+      ],
+      "effects": "Only outer adapters own filesystem, NVML, process guardians and terminal effects",
+      "contracts": [
+        "queue-imports",
+        "queue-layers"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "queue-imports",
+      "path": "tests/test_architecture.py",
+      "status": "planned",
+      "rules": "Queue inward layers and explicitly bounded CY integration; negative prohibited-edge cases",
+      "check": "architecture"
+    },
+    {
+      "id": "queue-layers",
+      "path": ".importlinter",
+      "status": "existing",
+      "rules": "Transitive inward dependency layers and policy isolation from CY, Hydra and SDKs",
+      "check": "import-linter"
+    }
+  ],
+  "checks": [
+    {
+      "id": "architecture",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo pytest tests/test_architecture.py",
+      "expectation": "Production boundaries pass; injected forbidden edges fail",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-extraction.md"
+      }
+    },
+    {
+      "id": "tests",
+      "kind": "behavior",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo pytest",
+      "expectation": "Moved queue lifecycle and new train/installation compatibility pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-extraction.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo ruff check . && uv run --frozen --no-sync --project ../clearml-yolo mypy .",
+      "expectation": "Ruff and strict mypy pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-extraction.md"
+      }
+    },
+    {
+      "id": "import-linter",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo lint-imports",
+      "expectation": "Both package layer and transitive pure-policy contracts pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-extraction.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo python ../clearml-yolo/scripts/check_docs.py --root . README.md AGENTS.md docs/migration.md docs/interfaces.md docs/development.md",
+      "expectation": "All Markdown paths and anchors pass the maintained CY checker",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-extraction.md"
+      }
+    },
+    {
+      "id": "physical-queue",
+      "kind": "behavior",
+      "command": "Observe default 2 GiB rejection; real cy-queue train and pipeline under documented isolated real-inventory test ceiling, retaining shared locks/guardians; verify GPU execution and downloaded task/model publication",
+      "expectation": "Real queue GPU execution, lifecycle and publication pass with explicit test-profile limitation; production 2 GiB policy unchanged and separately verified",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/evidence/2026-10-23-live-queue.md"
+      }
+    }
+  ],
+  "documentation": "Russian README, offline upgrade, shared CY interfaces and operation contracts.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh independent cross-repository code/architecture review with bounded correction re-review",
+    "evidence": "docs/evidence/2026-10-23-review.md",
+    "reconciliation": "Complete new package compared with original CY queue modules after namespace normalization; checked intended command/default-validation/two-package identity changes, moved tests/docs and retained wire/lock protocol. Review correction covered custom-YAML optional defaults. Independent live-evidence review verified single-GPU execution and publication under the documented test ceiling; default busy admission and multi-GPU limitations remain explicit."
+  }
+}

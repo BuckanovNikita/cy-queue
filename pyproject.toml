@@ -1,0 +1,41 @@
+[project]
+name = "cy-queue"
+version = "0.1.0"
+description = "Persistent whole-GPU scheduling for clearml-yolo commands"
+readme = "README.md"
+requires-python = ">=3.12.13,<3.14"
+dependencies = [
+    "clearml-yolo>=0.38,<0.39",
+    "hydra-core>=1.3.0",
+    "hydra-zen>=0.16.0",
+    "omegaconf>=2.3.0,<2.4",
+    "pydantic>=2.10.0",
+    "loguru>=0.7.0",
+    "filelock>=3.32.0",
+    "textual>=0.89.0",
+    "nvidia-ml-py>=12.535.77",
+]
+
+[project.scripts]
+cy-queue = "cy_queue.entrypoints.queue:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = ["pytest>=8.0", "ruff>=0.16.1,<0.17", "mypy>=1.11", "import-linter>=2.13", "hypothesis>=6.169.1"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+explicit_package_bases = true
+mypy_path = ["src", "tests"]
+warn_unreachable = true
+disallow_any_unimported = true
+enable_error_code = ["deprecated", "exhaustive-match", "explicit-override", "ignore-without-code", "mutable-override", "possibly-undefined", "redundant-expr", "truthy-bool", "truthy-iterable", "unimported-reveal", "unused-awaitable"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config"]
+markers = ["gpu_controls: host-wide GPU holds and manual reservation recovery", "ddp_gpu: opt-in real multi-GPU direct/queued native pipeline acceptance"]

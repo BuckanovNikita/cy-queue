@@ -1,0 +1,28 @@
+[importlinter]
+root_packages =
+    cy_queue
+include_external_packages = true
+
+[importlinter:contract:inward-layers]
+name = Queue dependencies point inward
+type = layers
+layers =
+    cy_queue.entrypoints
+    cy_queue.adapters
+    cy_queue.application
+    cy_queue.core
+
+[importlinter:contract:pure-policy]
+name = Queue policy does not import CY effects or configuration
+type = forbidden
+source_modules =
+    cy_queue.core
+    cy_queue.application
+forbidden_modules =
+    clearml_yolo
+    hydra
+    textual
+    pynvml
+    torch
+    clearml
+    ultralytics
