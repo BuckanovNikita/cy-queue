@@ -30,7 +30,41 @@ root so real GPU locks still coordinate with other users. They override only the
 metadata root with the scenario-owned path. Do not change host coordination to bypass
 other workloads. The multiuser harness uses controlled devices and test-owned identities.
 
-Architecture planning and acceptance are recorded in [architecture.json](architecture.json).
-The parent CY feature ledger owns cross-repository acceptance and the fresh independent
-review. This repository's delivery stopping point is a verified Conventional Commit.
-There is no remote creation, push, version tag, deployment or package publication workflow.
+Architecture planning and acceptance for the extraction are recorded in
+[architecture.json](architecture.json). New tasks keep their own architecture and
+dated verification records. Cross-repository work follows the active CY task ledger
+and fresh independent review requirement.
+
+## Paired release checks
+
+Before every release or delivery of **either** repository, verify the latest CY and
+cy-queue source revisions together, including the proposed release versions. Fetch
+both remotes, inspect their default branches/tags and preserve unrelated local work;
+do not assume a stale sibling checkout or installed metadata represents the latest.
+Coordinate workers and drain active jobs using [migration](migration.md) before
+changing an operational environment, or use an isolated prepared environment.
+
+From this checkout, with CY's approved external dependencies prepared:
+
+```bash
+uv pip install --python ../clearml-yolo/.venv/bin/python -e ../clearml-yolo -e .
+uv pip check --python ../clearml-yolo/.venv/bin/python
+uv run --frozen --no-sync --project ../clearml-yolo pytest -q
+uv run --frozen --no-sync --project ../clearml-yolo cy-queue --help
+```
+
+Run the configured static/import checks above too. The installation tests compare
+the source and installed requirements/versions; reinstall after version changes.
+Use normal resolution for acceptance, without `--no-deps`, and preserve approved
+external source revisions. Record both source SHAs, versions, resolver and queue
+integration results in dated evidence. Check the proposed version before creating
+or pushing a CY release tag, and recheck the final installed pair if hooks change
+either version. Incompatible bounds, stale metadata, missing current sources or
+failed/unavailable checks block delivery. Update the bounded CY requirement only
+after checking the newly supported interfaces. Future minors are not assumed compatible.
+
+Public source delivery uses Conventional Commits on `main` and
+`git@github.com:BuckanovNikita/cy-queue.git`. Update the package version for a package
+fix, verify and review the pair, commit only task-owned changes, then push the
+authorized branch and verify remote identity. There is no version-tag automation,
+deployment, GitHub Release object, asset upload or package registry publication.

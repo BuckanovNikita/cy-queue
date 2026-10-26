@@ -21,6 +21,14 @@ ClearML publication claims require explicitly owned live evidence. Preserve unre
 changes and local overrides; do not bypass hooks or alter shared services.
 
 Write README.md in Russian and other documentation in English. Use Conventional
-Commits after verification. No remote creation, push, version tags, deployment or
-registry publication is established for this repository. The initial cross-repository
-work is governed by CY feature 003; docs/architecture.json records its package boundary.
+Commits after verification. Public source lives at
+`git@github.com:BuckanovNikita/cy-queue.git`; push verified changes to `main` when
+delivery is authorized. No version-tag automation, deployment or registry publication
+is established. The initial extraction is recorded in CY feature 003;
+docs/architecture.json records its package boundary.
+
+Before every release or delivery of either CY or cy-queue, verify the latest versions
+of both together using the [paired release checks](docs/development.md#paired-release-checks).
+Check source and installed metadata, normal dependency resolution and queue integration
+against the proposed release versions. Incompatibility or unavailable evidence blocks
+delivery; a successful check of one package alone is insufficient.

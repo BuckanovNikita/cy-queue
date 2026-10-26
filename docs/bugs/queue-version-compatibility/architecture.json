@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "task": "queue-version-compatibility",
+  "scope": [
+    "pyproject.toml",
+    "tests/test_standalone_training.py",
+    "AGENTS.md",
+    "README.md",
+    "docs/development.md",
+    "docs/interfaces.md",
+    "docs/bugs/queue-version-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "AGENTS.md and docs/interfaces.md: queue depends on CY only through documented outer interfaces; core/application are pure; no CY reverse dependency. Bounded distribution metadata and current-source installation must agree.",
+  "modules": [
+    {
+      "id": "packaging",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare queue distribution version and supported CY range",
+      "interface": "Compatible CY source/installed versions accepted; incompatible bounds and stale metadata fail verification.",
+      "layer": "Distribution boundary and integration verification",
+      "allowed_dependencies": [
+        "clearml-yolo documented outer interfaces",
+        "packaging version parser",
+        "Python metadata and TOML readers"
+      ],
+      "forbidden_dependencies": [
+        "CY importing queue",
+        "queue core/application importing CY or SDK effects"
+      ],
+      "effects": "Metadata resolution and source inspection belong to installer/test boundaries; runtime effect owners unchanged.",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    },
+    {
+      "id": "installation-regression",
+      "path": "tests/test_standalone_training.py",
+      "change": "modify",
+      "responsibility": "Reject incompatible source/installed pairs and stale editable metadata",
+      "interface": "Compatible CY source/installed versions accepted; incompatible bounds and stale metadata fail verification.",
+      "layer": "Distribution boundary and integration verification",
+      "allowed_dependencies": [
+        "clearml-yolo documented outer interfaces",
+        "packaging version parser",
+        "Python metadata and TOML readers"
+      ],
+      "forbidden_dependencies": [
+        "CY importing queue",
+        "queue core/application importing CY or SDK effects"
+      ],
+      "effects": "Metadata resolution and source inspection belong to installer/test boundaries; runtime effect owners unchanged.",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "package-compatibility",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Installed/source CY must satisfy queue requirements; installed entrypoint loads outside checkout; separate namespaces remain distinct.",
+      "check": "integration"
+    },
+    {
+      "id": "inward-architecture",
+      "path": "tests/test_architecture.py",
+      "status": "existing",
+      "rules": "Only documented CY interfaces allowed; forbidden outward, SDK and effect edges rejected by injected negative cases.",
+      "check": "architecture"
+    }
+  ],
+  "checks": [
+    {
+      "id": "integration",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo pytest -q",
+      "expectation": "Complete ordinary suite passes, including source/installed compatibility and pipeline/train composition; GPU suite remains explicit.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/queue-version-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "architecture",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo lint-imports",
+      "expectation": "Both inward dependency and pure policy contracts pass; negative edges covered in ordinary suite.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/queue-version-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "ruff check .; ruff format --check .; mypy . (using CY prepared environment)",
+      "expectation": "Configured static checks pass without widened exclusions.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/queue-version-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "resolver",
+      "kind": "behavior",
+      "command": "uv pip install --python ../clearml-yolo/.venv/bin/python -e ../clearml-yolo -e .; uv pip check --python ../clearml-yolo/.venv/bin/python",
+      "expectation": "Normal resolution succeeds and installed environment has no dependency conflicts.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/queue-version-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "python ../clearml-yolo/scripts/check_docs.py --root . --all (using CY prepared environment)",
+      "expectation": "Markdown and local links pass; changed installation examples resolve.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/queue-version-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "README source acquisition/install, docs/development paired release checks, docs/interfaces bounded compatibility, AGENTS persistent release requirement; dated evidence in task directory.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "fresh native read-only subagent final_review",
+    "evidence": "docs/bugs/queue-version-compatibility/review.md",
+    "reconciliation": "Reviewed all changed metadata, installation regression, current README/AGENTS/interface/development guidance and task artifacts; no runtime moves/removals, reverse imports or effect ownership changes. CY local uv sources and approved external dependencies excluded."
+  }
+}

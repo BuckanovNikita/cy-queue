@@ -7,16 +7,30 @@
 
 ## Установка из исходников
 
+Исходники находятся в отдельном публичном
+[репозитории cy-queue](https://github.com/BuckanovNikita/cy-queue).
+Получите его рядом с `clearml-yolo`:
+
+```bash
+git clone https://github.com/BuckanovNikita/cy-queue.git
+```
+
 Требуются Linux с поддержкой pidfd/subreaper и Python в диапазоне из
 [pyproject.toml](pyproject.toml). Установите совместимый CY из исходников,
 подготовив его утверждённые внешние зависимости по инструкции проекта. Затем
 установите эту очередь **в то же окружение**. Публикация пакетов в PyPI не предполагается.
 
 ```bash
-uv pip install --python /path/to/environment/bin/python /path/to/clearml-yolo
-uv pip install --python /path/to/environment/bin/python /path/to/cy-queue
+uv pip install --python /path/to/environment/bin/python -e /path/to/clearml-yolo -e /path/to/cy-queue
+uv pip check --python /path/to/environment/bin/python
 /path/to/environment/bin/cy-queue --help
 ```
+
+Устанавливайте оба текущих checkout одной командой: resolver проверит их совместимость,
+а метаданные editable-установок обновятся вместе с версиями исходников. Допустимый
+диапазон CY указан в `pyproject.toml`. При запуске через окружение CY используйте
+`uv run --frozen --no-sync cy-queue ...`, чтобы синхронизация не удалила отдельный пакет.
+Перед обновлением действующей очереди выполните [процедуру остановки](docs/migration.md).
 
 Для изолированной сети заранее подготовьте все зависимости в доступном локальном
 индексе или окружении. Очередь не устанавливает зависимости и не меняет их исходники.

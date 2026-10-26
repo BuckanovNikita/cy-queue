@@ -1,8 +1,13 @@
 # CY integration interfaces
 
 The dependency direction is `cy_queue` → `clearml_yolo`. The package metadata bounds
-the supported CY minor version. CY never imports the queue and its direct execution
+the supported CY version range. CY never imports the queue and its direct execution
 requires no queue settings, workers, GPU reservations, Textual or NVML.
+
+The current source and installed versions of both distributions must agree and satisfy
+that range. The installation regression rejects stale editable metadata as well as
+incompatible versions. Follow [paired release checks](development.md#paired-release-checks)
+before publishing either repository; do not remove an upper bound to admit untested minors.
 
 | CY interface | Queue caller and invariant |
 | --- | --- |

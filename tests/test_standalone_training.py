@@ -1,13 +1,39 @@
 """Standalone queue execution uses the CY train schema and entrypoint."""
 
 import json
+import tomllib
+from importlib.metadata import version
 from pathlib import Path
 
+import clearml_yolo
 import pytest
+from packaging.requirements import Requirement
 
 from cy_queue.core.queue import ResourceRequest
 from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, validate_snapshot
 from cy_queue.entrypoints.queue import _parser
+
+
+def test_current_source_and_installed_versions_are_compatible() -> None:
+    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
+        "project"
+    ]
+    requirement = next(
+        parsed
+        for value in queue["dependencies"]
+        if (parsed := Requirement(value)).name == "clearml-yolo"
+    )
+    installed_cy = version("clearml-yolo")
+    assert requirement.specifier.contains(installed_cy), str(requirement)
+    assert version("cy-queue") == queue["version"], "Reinstall changed queue source metadata"
+    assert clearml_yolo.__file__ is not None
+    cy_metadata = Path(clearml_yolo.__file__).resolve().parents[2] / "pyproject.toml"
+    # Source-checkout verification must also catch stale editable distribution metadata.
+    if cy_metadata.is_file():
+        cy = tomllib.loads(cy_metadata.read_text())["project"]
+        assert cy["name"] == "clearml-yolo"
+        assert requirement.specifier.contains(cy["version"]), str(requirement)
+        assert installed_cy == cy["version"], "Reinstall changed CY source metadata"
 
 
 def test_submission_selects_standalone_train_and_keeps_pipeline_default(tmp_path: Path) -> None:
@@ -101,10 +127,13 @@ def test_installed_packages_and_console_entrypoint_work_outside_checkout(tmp_pat
 
     code = """
 from importlib.metadata import distribution
+from packaging.requirements import Requirement
 import clearml_yolo
 import cy_queue
 queue = distribution('cy-queue')
-assert any(requirement.startswith('clearml-yolo') for requirement in queue.requires)
+requirement = next(Requirement(text) for text in queue.requires
+                   if Requirement(text).name == 'clearml-yolo')
+assert requirement.specifier.contains(distribution('clearml-yolo').version), str(requirement)
 entry = next(item for item in queue.entry_points if item.name == 'cy-queue')
 assert entry.value == 'cy_queue.entrypoints.queue:main'
 assert callable(entry.load())
