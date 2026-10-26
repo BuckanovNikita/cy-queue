@@ -50,3 +50,12 @@ Ordinary queue tests include real owned subprocess behavior with controlled GPU
 telemetry. Both repositories retain a mandatory latest-pair release check, including
 proposed versions and stale editable metadata; future CY minors remain bounded out.
 Final independent review and architecture acceptance are recorded alongside this file.
+
+## Source delivery
+
+The verified package fix was committed as `89938c2` and pushed to `main` in the
+new public [cy-queue repository](https://github.com/BuckanovNikita/cy-queue).
+GitHub reports PUBLIC visibility and default branch `main`; remote `main` matched
+the local fix commit. This documentation follow-up records that delivery. No tags,
+GitHub Release objects, registry packages or release assets were created. CY remains
+0.40.0; its documentation-only delivery is tracked by its own bug workflow.

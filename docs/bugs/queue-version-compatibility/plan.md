@@ -21,8 +21,10 @@ check current pipeline/train composition and process/lifecycle callers together.
 - [x] Resolve/install both sources together; run dependency, CLI, complete ordinary
   queue, Ruff, format, strict mypy, import-linter and documentation checks.
 - [x] Reconcile actual diff and architecture evidence; obtain fresh independent review.
-- [ ] Commit 0.1.1, create the authorized public remote and push `main`; verify remote
-  identity. CY documentation follows its own hooks and authorized push.
+- [x] Commit 0.1.1, create the authorized public remote and push `main`; verify remote
+  identity.
+
+CY documentation delivery is tracked in its own bug artifacts and follows its hooks.
 
 Independent read-only investigation can run alongside parent planning. Parent owns
 all writes and verification; independent review follows integrated checks. No GPU
