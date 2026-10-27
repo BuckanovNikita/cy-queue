@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "task": "cy-041-compatibility",
+  "scope": [
+    "pyproject.toml",
+    "tests/test_batch_estimate_submission.py",
+    "docs/bugs/cy-041-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "Queue AGENTS.md and docs/interfaces.md preserve queue-to-CY dependency direction and explicit outer integration owners. Bounded metadata must agree with the checked proposed source/installed pair; no runtime effect ownership changes.",
+  "modules": [
+    {
+      "id": "packaging",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare the verified bounded CY compatibility range",
+      "interface": "Retain CY >=0.38 while admitting CY 0.41 and excluding 0.42; promote real queue source version to the already tested 0.1.2 proposal for the authorized release",
+      "layer": "Distribution boundary",
+      "allowed_dependencies": [
+        "Documented CY outer interfaces and existing queue dependencies"
+      ],
+      "forbidden_dependencies": [
+        "CY importing queue",
+        "Queue policy depending on CY or SDK effects"
+      ],
+      "effects": "Installer owns dependency resolution; snapshots own proposed metadata; no operational installation or runtime behavior changes",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    },
+    {
+      "id": "null-batch-coverage",
+      "path": "tests/test_batch_estimate_submission.py",
+      "change": "add",
+      "already_applied": true,
+      "responsibility": "Verify null survives submission and resolves against worker allocation",
+      "interface": "Preserve requested null, bind allocation-relative devices and select compatible saved global/per-GPU capacity",
+      "layer": "Integration verification",
+      "allowed_dependencies": [
+        "Existing queue snapshot entrypoints",
+        "Explicit CY integration records and cache boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Physical GPU work in routine tests",
+        "External service publication"
+      ],
+      "effects": "Temporary fixture filesystem and owned subprocesses only; GPU inventory/profile boundaries controlled",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "package-compatibility",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Source and installed metadata must agree and satisfy queue bounds; both packages and entrypoints import outside checkout",
+      "check": "integration"
+    },
+    {
+      "id": "inward-architecture",
+      "path": "tests/test_architecture.py",
+      "status": "existing",
+      "rules": "Explicit CY caller ownership and negative forbidden-effect/import coverage remain enforced",
+      "check": "integration"
+    }
+  ],
+  "checks": [
+    {
+      "id": "integration",
+      "kind": "imports",
+      "command": "CUDA_VISIBLE_DEVICES='' SNAPSHOT_ENV/bin/python -m pytest -q from the queue source snapshot",
+      "expectation": "Full ordinary suite, metadata checks, null-batch tests and architecture negative cases pass; physical GPU cases remain deselected",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-041-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "imports",
+      "kind": "imports",
+      "command": "CUDA_VISIBLE_DEVICES='' SNAPSHOT_ENV/bin/lint-imports from queue snapshot",
+      "expectation": "Both inward and policy-isolation contracts pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-041-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "Snapshot environment ruff check ., ruff format --check ., mypy . from queue snapshot with CUDA hidden",
+      "expectation": "Configured static checks pass without changed exclusions",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-041-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "resolver",
+      "kind": "behavior",
+      "command": "uv pip install --python SNAPSHOT_ENV/bin/python -r frozen-requirements.txt -e CY_SNAPSHOT -e QUEUE_SNAPSHOT; uv pip check --python SNAPSHOT_ENV/bin/python with CUDA hidden",
+      "expectation": "Normal resolution accepts exact proposed 0.41.0/0.1.2 metadata and unchanged approved dependencies",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-041-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "CUDA_VISIBLE_DEVICES=empty uv run --frozen --no-sync --project ../clearml-yolo python ../clearml-yolo/scripts/check_docs.py --root . docs/bugs/cy-041-compatibility/plan.md docs/bugs/cy-041-compatibility/verification.md from queue checkout",
+      "expectation": "Task documentation and local links pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-041-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "Task plan and dated proposed-version verification; maintained installation/interface guidance remains accurate and unchanged",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh independent native agent review_pair; parent reconciliation",
+    "evidence": "docs/bugs/cy-041-compatibility/verification.md",
+    "reconciliation": "Reviewed complete task-owned diff: bounded CY upper requirement in pyproject.toml; added tests/test_batch_estimate_submission.py; added task plan, architecture and dated evidence. No runtime modules, real version changes, removals or unrelated changes. Eleven focused independent tests and existing import/negative contracts establish unchanged effect ownership; refreshed complete proposed-source pair verifies resolver, metadata and 512 integration tests. Physical CY acceptance and eventual release remain separate blocked gates. Release amendment 2026-10-27 promotes only real queue metadata to the already tested 0.1.2 proposal; no runtime or test changes. Fresh paired release results and final parent acceptance are recorded in CY feature 006 evidence/release-queue.md; earlier accepted preparation evidence is preserved."
+  }
+}
