@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "task": "cy-043-compatibility",
+  "scope": [
+    "pyproject.toml",
+    "docs/bugs/cy-043-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "Queue AGENTS.md and docs/interfaces.md require queue-to-CY dependency direction, explicit outer integration owners, exact source/installed metadata and checked bounded compatibility.",
+  "modules": [
+    {
+      "id": "packaging",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare the verified CY compatibility bound and package fix version",
+      "interface": "Queue 0.1.4 admits CY >=0.38,<0.44 only after isolated CY 0.43.0 verification; future minor 0.44 remains excluded",
+      "layer": "Distribution boundary",
+      "allowed_dependencies": [
+        "Documented CY outer integration interfaces and existing queue dependencies"
+      ],
+      "forbidden_dependencies": [
+        "CY importing queue",
+        "Queue policy importing CY, SDKs or documentation serving"
+      ],
+      "effects": "External installer owns dependency resolution; proposed checks own private snapshots and environment; no operational installation changes",
+      "contracts": [
+        "package-compatibility",
+        "exact-cy-owners",
+        "inward-layers"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "package-compatibility",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Source and installed versions agree and satisfy bounded requirement; imports and console entrypoint work outside source directories",
+      "check": "integration"
+    },
+    {
+      "id": "exact-cy-owners",
+      "path": "tests/test_architecture.py",
+      "status": "existing",
+      "rules": "Exact CY caller ownership and injected forbidden direct/type-only/dynamic/process edges remain enforced",
+      "check": "integration"
+    },
+    {
+      "id": "inward-layers",
+      "path": ".importlinter",
+      "status": "existing",
+      "rules": "Queue layers point inward and policy does not import CY or SDK effects transitively",
+      "check": "imports"
+    }
+  ],
+  "checks": [
+    {
+      "id": "integration",
+      "kind": "imports",
+      "command": "Private environment python -m pytest -q from the captured queue source",
+      "expectation": "Entire ordinary suite passes, including current-source metadata and exact CY caller ownership with injected forbidden edges",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "imports",
+      "kind": "imports",
+      "command": "Private environment lint-imports from the captured queue source",
+      "expectation": "Both inward-layer and policy-isolation contracts pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "Private environment ruff check ., ruff format --check ., and mypy . from the captured queue source",
+      "expectation": "Configured lint, formatting and strict typing pass without exemptions",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "resolver",
+      "kind": "behavior",
+      "command": "uv pip install --python PRIVATE_PYTHON -r frozen-requirements.txt -e CY_SOURCE -e QUEUE_SOURCE; uv pip check --python PRIVATE_PYTHON; source/installed metadata and origin probe",
+      "expectation": "Normal resolution accepts CY 0.43.0 and queue 0.1.4 with exact matching metadata and approved external source pins",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "isolation",
+      "kind": "behavior",
+      "command": "Private environment python executes the deny-documentation train/pipeline composition probe and cy-queue --help",
+      "expectation": "Queue command composition and installed help work with documentation import failures",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "CY scripts/check_docs.py --root QUEUE docs/bugs/cy-043-compatibility/plan.md docs/bugs/cy-043-compatibility/verification.md",
+      "expectation": "Task Markdown and local links pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-043-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "Existing development/interfaces/migration guidance remains accurate. Add this scoped plan, architecture record and dated verification; preserve previous compatibility history.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh native read-only release_companion_review after parent integration and checks",
+    "evidence": "docs/bugs/cy-043-compatibility/verification.md",
+    "reconciliation": "Only package version and verified CY upper bound changed, plus scoped task records. Runtime/tests/import ownership/effects unchanged; existing exact owner and negative dependency tests passed in the full ordinary suite. Normal-resolution metadata, static/import, isolation and documentation evidence was independently inspected. No blocking finding; final committed metadata and delivery remain separate gates."
+  }
+}
