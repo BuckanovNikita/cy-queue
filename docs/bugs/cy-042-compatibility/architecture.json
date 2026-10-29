@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "task": "cy-042-compatibility",
+  "scope": [
+    "pyproject.toml",
+    "tests/test_weight_preparation_submission.py",
+    "docs/bugs/cy-042-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "Queue AGENTS.md and docs/interfaces.md preserve queue-to-CY dependency direction and explicit outer integration owners. Bounded metadata must agree with the checked proposed source/installed pair; no runtime effect ownership changes.",
+  "modules": [
+    {
+      "id": "packaging",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare the verified bounded CY compatibility range",
+      "interface": "Retain CY >=0.38 while admitting verified CY 0.42 and excluding 0.43; prepare queue version 0.1.3 only after proposed-pair verification",
+      "layer": "Distribution boundary",
+      "allowed_dependencies": [
+        "Documented CY outer interfaces and existing queue dependencies"
+      ],
+      "forbidden_dependencies": [
+        "CY importing queue",
+        "Queue policy depending on CY or SDK effects"
+      ],
+      "effects": "Installer owns dependency resolution; snapshots own proposed metadata; no operational installation or runtime behavior changes",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    },
+    {
+      "id": "weight-preparation-boundary",
+      "path": "tests/test_weight_preparation_submission.py",
+      "change": "add",
+      "responsibility": "Verify queue composition and runner preserve custom YOLO selectors without preparing model catalogue",
+      "interface": "Submit pipeline/train snapshots without bulk asset preparation; exec unchanged matching CY entrypoint with custom architecture, pretrained and resume settings",
+      "layer": "Integration verification",
+      "allowed_dependencies": [
+        "Existing queue snapshot entrypoints",
+        "Explicit CY integration records and cache boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Physical GPU work in routine tests",
+        "External service publication"
+      ],
+      "effects": "Temporary fixture filesystem and owned subprocesses only; GPU inventory/profile boundaries controlled",
+      "contracts": [
+        "package-compatibility",
+        "inward-architecture"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "package-compatibility",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Source and installed metadata must agree and satisfy queue bounds; both packages and entrypoints import outside checkout",
+      "check": "integration"
+    },
+    {
+      "id": "inward-architecture",
+      "path": "tests/test_architecture.py",
+      "status": "existing",
+      "rules": "Explicit CY caller ownership and negative forbidden-effect/import coverage remain enforced",
+      "check": "integration"
+    }
+  ],
+  "checks": [
+    {
+      "id": "integration",
+      "kind": "imports",
+      "command": "CUDA_VISIBLE_DEVICES='' SNAPSHOT_ENV/bin/python -m pytest -q from the queue source snapshot",
+      "expectation": "Full ordinary suite including custom model/pretrained preservation, metadata and architecture negative cases passes; physical GPU cases remain deselected",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-042-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "imports",
+      "kind": "imports",
+      "command": "CUDA_VISIBLE_DEVICES='' SNAPSHOT_ENV/bin/lint-imports from queue snapshot",
+      "expectation": "Both inward and policy-isolation contracts pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-042-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "Snapshot environment ruff check ., ruff format --check ., mypy . with CUDA hidden",
+      "expectation": "Configured static checks pass without changed exclusions",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-042-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "resolver",
+      "kind": "behavior",
+      "command": "uv pip install --python SNAPSHOT_ENV/bin/python -r frozen-requirements.txt -e CY_SNAPSHOT -e QUEUE_SNAPSHOT; uv pip check --python SNAPSHOT_ENV/bin/python with CUDA hidden",
+      "expectation": "Normal resolution accepts exact proposed CY 0.42.0 and queue 0.1.3 metadata and unchanged approved dependencies",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-042-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "Private paired environment Python executes CY scripts/check_docs.py --root QUEUE docs/bugs/cy-042-compatibility/plan.md docs/bugs/cy-042-compatibility/verification.md docs/bugs/cy-042-compatibility/review.md",
+      "expectation": "Task documentation and local links pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/bugs/cy-042-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "Maintained development/interfaces/migration guidance inspected and unchanged because source-first paired checks and upgrade/lifecycle ownership remain accurate. Task plan, review and dated verification record final approved isolated source pair and remaining committed metadata gate.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh independent final_review and acceptance_review; focused CY privacy_final closure; parent combined acceptance",
+    "evidence": "docs/bugs/cy-042-compatibility/review.md",
+    "reconciliation": "Complete task-owned queue diff contains only pyproject.toml version 0.1.3 and CY >=0.38,<0.43 bound, six-case tests/test_weight_preparation_submission.py, and new docs/bugs/cy-042-compatibility plan/architecture/verification/review. No queue runtime edits, removals, renames, changed import direction or effect exceptions. Existing exact/negative architecture checks and full 518-test proposed source pair pass after integrated review corrections. Isolated CY feature 007 excludes concurrent feature 008; approved externals are unchanged. Final committed metadata checks remain a separate parent delivery gate."
+  }
+}

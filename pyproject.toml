@@ -1,11 +1,11 @@
 [project]
 name = "cy-queue"
-version = "0.1.2"
+version = "0.1.3"
 description = "Persistent whole-GPU scheduling for clearml-yolo commands"
 readme = "README.md"
 requires-python = ">=3.12.13,<3.14"
 dependencies = [
-    "clearml-yolo>=0.38,<0.42",
+    "clearml-yolo>=0.38,<0.43",
     "hydra-core>=1.3.0",
     "hydra-zen>=0.16.0",
     "omegaconf>=2.3.0,<2.4",
