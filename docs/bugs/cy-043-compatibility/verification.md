@@ -126,3 +126,51 @@ actual diff and the adjacent architecture record.
 
 Final committed CY/queue metadata refresh and remote delivery are still pending;
 this review does not substitute for main CY acceptance or physical execution.
+
+
+## Final committed-pair refresh
+
+Date: 2026-10-29. Final integration checks passed for actual committed CY
+`dbde23565a9938cfb7556819ab6a5beee24d5423` (0.43.0) and queue
+`114b97272ab5bb406a90c146ea62d8fdd19d75b1` (0.1.4). CY's annotated `v0.43.0`
+tag object `877480264094557b82ae1166b1ebbbecbbd27011` peels to the tested release
+commit. Its feature parent is `60091649dd71087e5dac2a9a712098eaa5be5de6`.
+
+Clean source captures were verified file-by-file against Git blob identities.
+Both committed package metadata files and CY's lockfile exactly match the tested
+proposal. All runtime, tests, scripts, browser tests and check configuration are
+also identical. Differences from the proposal are restricted to changelog and
+acceptance prose. Approved digital-metrics and report-generator source trees and
+revisions remain identical to the earlier captured pins.
+
+A fresh frozen requirements export and normal dependency resolution reinstalled
+the four committed editable source origins in the retained private environment.
+All 285 installed packages were compatible. The source/installed metadata probe
+again checked versions, normalized direct requirements, origins and editable URLs
+for all four distributions; queue still admits 0.43.0 and excludes 0.44.0.
+The canonical CY verification environment and original proposal snapshots were
+preserved throughout.
+
+All final commands passed: the ordinary queue suite reported **518 passed,
+7 deselected, 19 upstream warnings** in 120.44 seconds; Ruff, formatting, strict
+mypy (69 files), both import contracts, installed help and train/pipeline composition
+with documentation imports blocked also passed. Installed `cy-docs --check` passed
+with 467 fields, 156 configurations and 8 tutorials. A separate isolated catalog
+probe asserted that installed CY and catalog versions both equal **0.43.0**.
+
+Committed manifest hashes are CY
+`6045f9c9eecbbbffd0c331c1e7615ecc59d8abc29aeeef55438bd6d4a9aebe8d` and queue
+`b6e7975e6c5606ff4c4151e8c56722deef8e17ffe6558fbb23036d34a6449f71`; external
+manifest hashes remain unchanged. A post-check source inventory found no drift in
+any captured repository before this evidence-only appendix. Both appended Markdown
+records passed local-link validation.
+
+The retained private task evidence adds `committed-source-manifests.json`,
+`committed-proposal-comparison.json`, `committed-source-drift.json`,
+`committed-identities.json`, `committed-evidence-hashes.json` and `committed-*.log`.
+Exact arguments, exit codes and log hashes are recorded in `results.json`; every
+recorded final-command log hash was independently recomputed successfully.
+
+Final committed pairing closes the remaining integration refresh gate after the
+accepted independent review. The parent owns evidence commits and remote delivery.
+No operational installation, shared worker or physical acceptance claim is added.
