@@ -1,12 +1,13 @@
 """NVML/CUDA telemetry behind the queue application's inventory port."""
 
 from cy_queue.adapters.runtime.gpu_resources import GPUInventory
+from cy_queue.core.execution import DEFAULT_MAX_USED_MEMORY_GIB
 from cy_queue.core.queue import GPUObservation
 
 
 class QueueGPUInventory:
-    def __init__(self) -> None:
-        self.source = GPUInventory()
+    def __init__(self, *, max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB) -> None:
+        self.source = GPUInventory(max_used_memory_gib=max_used_memory_gib)
         self.visible: tuple[str, ...] | None = None
 
     def snapshot(self) -> tuple[GPUObservation, ...]:
@@ -23,9 +24,11 @@ class QueueGPUInventory:
         )
 
 
-def allocation_available(devices: tuple[str, ...]) -> bool:
+def allocation_available(
+    devices: tuple[str, ...], *, max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB
+) -> bool:
     """Read physical memory again at startup, without a CUDA context or process scan."""
-    source = GPUInventory()
+    source = GPUInventory(max_used_memory_gib=max_used_memory_gib)
     source.restrict_to(())
     try:
         physical = {card.uuid: card for card in source.snapshot(memory_only=True)}

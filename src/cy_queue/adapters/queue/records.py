@@ -1,7 +1,8 @@
 """Validated private guardian transport and public worker liveness records."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from cy_queue.core.execution import DEFAULT_MAX_USED_MEMORY_GIB
 from cy_queue.core.queue import QUEUE_COMPATIBILITY, GPUObservation, QueueRecord, WorkerIdentity
 
 
@@ -18,6 +19,9 @@ class GuardianPayload(QueueRecord):
     cwd: str
     project_root: str
     start_gate: str
+    max_used_memory_gib: float = Field(
+        default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False
+    )
 
 
 class WorkerRecord(QueueRecord):

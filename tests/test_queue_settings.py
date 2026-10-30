@@ -151,6 +151,34 @@ def test_resolving_configuration_never_creates_queue_directories(tmp_path: Path)
     assert settings.coordination_root == tmp_path / "coordination"
     assert settings.config_path == path
     assert settings.root_source == "config"
+    assert settings.max_used_memory_gib == 2.0
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("value", [12, 12.0, 0.5])
+def test_configured_memory_threshold_is_numeric_and_resolved_without_effects(
+    tmp_path: Path, value: float
+) -> None:
+    from cy_queue.adapters.queue.settings import load_queue_settings
+
+    path = _configuration(tmp_path, max_used_memory_gib=value)
+    settings = load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)})
+    assert settings.max_used_memory_gib == value
+    assert isinstance(settings.max_used_memory_gib, float)
+    assert list(tmp_path.iterdir()) == [path]
+
+
+@pytest.mark.parametrize("value", ["0", "-1.0", "inf", "-inf", "nan", "true", '"12"'])
+def test_invalid_memory_threshold_fails_before_creating_resources(
+    tmp_path: Path, value: str
+) -> None:
+    from cy_queue.adapters.queue.settings import load_queue_settings
+
+    path = _configuration(tmp_path)
+    with path.open("a") as output:
+        output.write(f"\nmax_used_memory_gib = {value}\n")
+    with pytest.raises(ValueError, match="max_used_memory_gib"):
+        load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)})
     assert list(tmp_path.iterdir()) == [path]
 
 
@@ -359,6 +387,17 @@ def test_cli_requires_filled_default_settings_but_help_needs_no_configuration(
     configured = run("config", "--json")
     assert configured.returncode == 0, configured.stderr
     assert json.loads(configured.stdout)["config_path"] == str(path)
+    assert json.loads(configured.stdout)["max_used_memory_gib"] == 2.0
+    _configuration(directory, max_used_memory_gib=12.0)
+    configured = run("config", "--json")
+    assert configured.returncode == 0, configured.stderr
+    assert json.loads(configured.stdout)["max_used_memory_gib"] == 12.0
+    configured_text = run("config")
+    assert configured_text.returncode == 0, configured_text.stderr
+    assert "max used memory gib: 12.0" in configured_text.stdout
+    removed_option = run("worker", "--max-used-memory-gib", "12")
+    assert removed_option.returncode != 0
+    assert "unrecognized arguments" in removed_option.stderr
     assert list(directory.iterdir()) == [path]
 
 
@@ -433,8 +472,9 @@ def test_workers_inherit_configured_storage_coordination_and_reject_conflicts(
         QueueProcesses(store, identity, local_root=tmp_path / "other")
 
 
-def test_guardian_uses_frozen_coordination_without_rereading_environment(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("threshold", [None, 12.0])
+def test_guardian_uses_frozen_settings_without_rereading_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, threshold: float | None
 ) -> None:
     from cy_queue.adapters.queue.guardian import _Guardian
     from cy_queue.adapters.queue.records import GuardianPayload
@@ -456,11 +496,17 @@ def test_guardian_uses_frozen_coordination_without_rereading_environment(
         project_root=str(tmp_path),
         start_gate=str(tmp_path / "gate"),
     )
+    data = payload.model_dump()
+    if threshold is None:
+        data.pop("max_used_memory_gib", None)
+    else:
+        data["max_used_memory_gib"] = threshold
     path = tmp_path / "guardian.json"
-    path.write_text(payload.model_dump_json(), encoding="utf-8")
+    path.write_text(json.dumps(data), encoding="utf-8")
     monkeypatch.setenv("CY_QUEUE_CONFIG", str(tmp_path / "missing-config.toml"))
     guardian = _Guardian(path)
     assert guardian.store.local_root == local
+    assert guardian.payload.max_used_memory_gib == (2.0 if threshold is None else threshold)
     assert (local / "test-host" / "nfs-transaction.lock").is_file()
 
 

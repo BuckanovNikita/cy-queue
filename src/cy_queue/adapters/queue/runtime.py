@@ -27,6 +27,7 @@ from cy_queue.adapters.queue.storage import (
     _read,
     atomic_write,
 )
+from cy_queue.core.execution import DEFAULT_MAX_USED_MEMORY_GIB, AutoGPUControl
 from cy_queue.core.queue import (
     QUEUE_COMPATIBILITY,
     GPUObservation,
@@ -54,7 +55,11 @@ class QueueProcesses:
         child_module: str = "cy_queue.entrypoints.queue_run",
         local_root: Path | None = None,
         command_builder: CommandBuilder | None = None,
+        max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB,
     ) -> None:
+        self.max_used_memory_gib = AutoGPUControl(
+            max_used_memory_gib=max_used_memory_gib
+        ).max_used_memory_gib
         self.store = store
         self.identity = identity
         selected = local_root.resolve() if local_root is not None else store.local_root
@@ -250,6 +255,7 @@ class QueueProcesses:
             queue_root=str(self.store.root),
             local_root=str(self.local_root) if self.local_root else None,
             devices=devices,
+            max_used_memory_gib=self.max_used_memory_gib,
             marker=uuid4().hex,
             ownership_since=process_ticks(),
             argv=argv,

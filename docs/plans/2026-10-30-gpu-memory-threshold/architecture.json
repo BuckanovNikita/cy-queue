@@ -1,0 +1,248 @@
+{
+  "schema_version": 1,
+  "task": "2026-10-30 configurable queue GPU memory threshold",
+  "scope": [
+    "src/cy_queue/adapters/queue/settings.py",
+    "src/cy_queue/adapters/queue/inventory.py",
+    "src/cy_queue/adapters/queue/records.py",
+    "src/cy_queue/adapters/queue/runtime.py",
+    "src/cy_queue/adapters/queue/guardian.py",
+    "src/cy_queue/entrypoints/queue.py",
+    "pyproject.toml",
+    "tests/test_queue_settings.py",
+    "tests/test_gpu_resources.py",
+    "tests/test_queue_admission.py",
+    "tests/test_queue_logging.py",
+    "README.md",
+    "docs/interfaces.md",
+    "docs/migration.md",
+    "docs/plans/2026-10-30-gpu-memory-threshold"
+  ],
+  "impact": "modules",
+  "rules": "AGENTS.md and docs/interfaces.md require inward dependencies cy_queue -> CY, pure core/application, inert initializers, and adapter ownership of storage/NVML/process effects; shared ownership and handoff contracts remain unchanged.",
+  "modules": [
+    {
+      "id": "settings",
+      "path": "src/cy_queue/adapters/queue/settings.py",
+      "change": "modify",
+      "responsibility": "Load strict explicit queue configuration",
+      "interface": "Positive finite max_used_memory_gib defaults to 2.0; QueueSettings carries the resolved float; invalid input fails before queue effects",
+      "layer": "adapters",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "Reads configuration and mount information only",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    },
+    {
+      "id": "inventory",
+      "path": "src/cy_queue/adapters/queue/inventory.py",
+      "change": "modify",
+      "responsibility": "Adapt physical GPU telemetry to queue admission and fresh startup checks",
+      "interface": "Inject the configured threshold into both GPUInventory constructors; missing telemetry stays unavailable; used bytes must be strictly below threshold * 1024**3",
+      "layer": "adapters",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "GPUInventory owns deferred NVML and CUDA visibility effects",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    },
+    {
+      "id": "records",
+      "path": "src/cy_queue/adapters/queue/records.py",
+      "change": "modify",
+      "responsibility": "Validate private guardian transport and public worker liveness",
+      "interface": "Private GuardianPayload freezes positive finite threshold; historical payloads without field retain default 2.0; shared public protocol unchanged",
+      "layer": "adapters",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "No effects; validates transport values",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    },
+    {
+      "id": "runtime",
+      "path": "src/cy_queue/adapters/queue/runtime.py",
+      "change": "modify",
+      "responsibility": "Launch and recover owner guardians",
+      "interface": "Validate threshold at construction and persist in each guardian payload; retain default for existing callers",
+      "layer": "adapters",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "Owns subprocess launch and private transport persistence; locks and recovery unchanged",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    },
+    {
+      "id": "guardian",
+      "path": "src/cy_queue/adapters/queue/guardian.py",
+      "change": "modify",
+      "responsibility": "Own startup gate and allocation through descendant cleanup",
+      "interface": "Use frozen threshold in fresh memory check and report its actual value when startup is deferred",
+      "layer": "adapters",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "Owns guarded process execution and cleanup; does not reload user configuration",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    },
+    {
+      "id": "entrypoint",
+      "path": "src/cy_queue/entrypoints/queue.py",
+      "change": "modify",
+      "responsibility": "Compose configured queue effects and user diagnostics",
+      "interface": "Resolve settings once, inject same float into inventory and processes; show effective threshold in config and worker diagnostics",
+      "layer": "entrypoints",
+      "allowed_dependencies": [
+        "Queue core policy records and constants",
+        "Same-layer adapters with existing ownership",
+        "Documented CY interfaces only at current boundaries"
+      ],
+      "forbidden_dependencies": [
+        "Policy imports of adapters, entrypoints or CY effects",
+        "Direct model SDK/NVML imports outside existing adapter owners"
+      ],
+      "effects": "CLI composition owns dependency construction and user output",
+      "contracts": [
+        "architecture",
+        "inward"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "architecture",
+      "path": "tests/test_architecture.py",
+      "status": "existing",
+      "rules": "All modules, static/type-only/dynamic/process edges, SDK and CY ownership plus injected prohibited edges",
+      "check": "architecture"
+    },
+    {
+      "id": "inward",
+      "path": ".importlinter",
+      "status": "existing",
+      "rules": "Transitive inward layers and pure core/application isolation from CY and SDKs",
+      "check": "inward"
+    }
+  ],
+  "checks": [
+    {
+      "id": "architecture",
+      "kind": "imports",
+      "command": "python -m pytest -q tests/test_architecture.py",
+      "expectation": "All dependency checks and forbidden-edge negative cases pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    },
+    {
+      "id": "inward",
+      "kind": "imports",
+      "command": "lint-imports",
+      "expectation": "Both existing import contracts pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    },
+    {
+      "id": "behavior",
+      "kind": "behavior",
+      "command": "CUDA_VISIBLE_DEVICES= UV_PROJECT_ENVIRONMENT=../paired-env uv run --frozen --no-sync --project ../paired-cy-proposed python -m pytest -q",
+      "expectation": "Default and configured thresholds, invalid config, startup recheck and diagnostics pass together with full queue regression; opt-in hardware tests remain deselected",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    },
+    {
+      "id": "static",
+      "kind": "behavior",
+      "command": "ruff check . && ruff format --check . && mypy .",
+      "expectation": "Lint, formatting and strict typing pass",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    },
+    {
+      "id": "paired",
+      "kind": "behavior",
+      "command": "UV_LINK_MODE=copy uv pip install --python paired-env/bin/python -e paired-cy-proposed -e cy-queue-memory -e repo/external/digital-metrics -e repo/external/report-generator; uv pip check --python paired-env/bin/python; paired-env/bin/python paired-env/evidence/verify_final_pair.py --cy-source paired-cy-proposed; installed cy-queue --help",
+      "expectation": "Source and installed versions match and integration passes in the companion-owned isolated pair",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    },
+    {
+      "id": "documentation",
+      "kind": "documentation",
+      "command": "Markdown and local-link validation; validate changed TOML example with queue settings tests",
+      "expectation": "Changed documentation and example remain valid",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/verification.md"
+      }
+    }
+  ],
+  "documentation": "Update Russian README, English interfaces and migration guidance. Record actual results in dated verification.md; no machine-specific default or paths enter portable docs.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Independent native agent review_queue_memory after parent integration and verification",
+    "evidence": "docs/plans/2026-10-30-gpu-memory-threshold/review.md",
+    "reconciliation": "Reviewed complete owned diff: six runtime modules, four test files, package version, README/interfaces/migration and new task plan/architecture/verification/review records. No runtime additions, moves or deletions, unrelated changes, shared operational state or external dependencies changed. Frozen 73-file runtime/test/check/metadata inventory unchanged; later edits only close task evidence. Candidate CY0.44.4/queue0.1.6 normal-resolved checks passed; final actual-release refresh remains parent-owned before publication."
+  }
+}

@@ -346,6 +346,32 @@ def test_queue_availability_uses_memory_without_mig_or_process_checks(
     assert allocation_available(("GPU-a",))
 
 
+@pytest.mark.parametrize(
+    ("threshold", "used", "available"),
+    [
+        (2.0, 2 * 1024**3 - 1, True),
+        (2.0, 2 * 1024**3, False),
+        (2.0, 8 * 1024**3, False),
+        (12.0, 8 * 1024**3, True),
+        (12.0, 12 * 1024**3 - 1, True),
+        (12.0, 12 * 1024**3, False),
+        (12.0, 12 * 1024**3 + 1, False),
+        (12.0, None, False),
+    ],
+)
+def test_queue_admission_and_startup_use_configured_memory_threshold(
+    monkeypatch: pytest.MonkeyPatch, threshold: float, used: int | None, available: bool
+) -> None:
+    from cy_queue.adapters.queue.inventory import QueueGPUInventory, allocation_available
+    from cy_queue.adapters.runtime import gpu_resources
+
+    _install_nvml(monkeypatch, _FakeNVML(uuids=("GPU-a",), used_memory=(used,)))
+    monkeypatch.setattr(gpu_resources, "_probe_visible_uuids", lambda: ("GPU-a",))
+    inventory = QueueGPUInventory(max_used_memory_gib=threshold)
+    assert inventory.snapshot()[0].available is available
+    assert allocation_available(("GPU-a",), max_used_memory_gib=threshold) is available
+
+
 def test_queue_keeps_healthy_gpu_available_when_another_memory_read_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

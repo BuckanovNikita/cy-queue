@@ -1,5 +1,6 @@
 """A queued workload cannot start using an earlier, now stale memory observation."""
 
+import argparse
 import json
 import os
 import sys
@@ -14,10 +15,13 @@ from cy_queue.adapters.queue.storage import NFSQueueStore
 from cy_queue.core.queue import JobSnapshot, WorkerIdentity
 
 
-@pytest.mark.parametrize("used", [2 * 1024**3, 2 * 1024**3 + 1, None])
+@pytest.mark.parametrize("threshold", [2.0, 12.0])
+@pytest.mark.parametrize("offset", [0, 1, None])
 def test_guardian_rechecks_memory_before_workload_exec(
-    tmp_path: Path, queue_memory: Path, used: int | None
+    tmp_path: Path, queue_memory: Path, threshold: float, offset: int | None
 ) -> None:
+    limit = int(threshold * 1024**3)
+    used = None if offset is None else limit + offset
     queue_memory.write_text(json.dumps({"GPU-test": used}), encoding="utf-8")
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
     store = NFSQueueStore(tmp_path / "queue", identity)
@@ -38,6 +42,7 @@ def test_guardian_rechecks_memory_before_workload_exec(
     processes = QueueProcesses(
         store,
         identity,
+        max_used_memory_gib=threshold,
         local_root=tmp_path / "local",
         command_builder=lambda snapshot, _path, _devices: [
             snapshot.interpreter,
@@ -49,10 +54,13 @@ def test_guardian_rechecks_memory_before_workload_exec(
     try:
         assert not processes.start(job, ("GPU-test",))
         assert store.view().jobs[0].state == "pending"
+        assert store.view().jobs[0].waiting_reason == (
+            f"GPU memory is unavailable or at least {threshold:g} GiB at startup"
+        )
         assert not started.exists()
         assert not processes.reserved()
         # A later attempt uses a fresh measurement, with the strict boundary.
-        queue_memory.write_text(json.dumps({"GPU-test": 2 * 1024**3 - 1}), encoding="utf-8")
+        queue_memory.write_text(json.dumps({"GPU-test": limit - 1}), encoding="utf-8")
         assert processes.start(store.view().jobs[0], ("GPU-test",))
         deadline = time.monotonic() + 10
         while store.view().jobs[0].state not in {"completed", "failed", "recovery_required"}:
@@ -195,3 +203,72 @@ def test_free_keeps_running_job_and_sibling_lease_then_rechecks_next_job(
             (tmp_path / f"{label}.finish").touch()
         for process in processes._guardians.values():
             process.wait(timeout=10)
+
+
+def test_cli_configuration_controls_admission_and_guardian_startup(
+    tmp_path: Path, queue_memory: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cy_queue.adapters.runtime import gpu_resources
+    from cy_queue.application.queue import QueueService
+    from cy_queue.entrypoints import queue
+    from cy_queue.entrypoints.queue_presentation import QueuePresentation
+    from queue_cli_helpers import configure_queue
+    from queue_nvml import pynvml
+
+    configure_queue(tmp_path, monkeypatch)
+    with (tmp_path / "queue.toml").open("a") as output:
+        output.write("max_used_memory_gib = 12.0\n")
+    queue_memory.write_text(json.dumps({"GPU-test": 8 * 1024**3}), encoding="utf-8")
+    monkeypatch.setitem(sys.modules, "pynvml", pynvml)
+    monkeypatch.setattr(gpu_resources, "_probe_visible_uuids", lambda: ("GPU-test",))
+    started = tmp_path / "workload.started"
+
+    def run_configured_service(
+        service: QueueService,
+        _arguments: argparse.Namespace,
+        _root: Path,
+        *,
+        presentation: QueuePresentation | None = None,
+    ) -> None:
+        assert isinstance(service.processes, QueueProcesses)
+        processes = service.processes
+        processes.command_builder = lambda snapshot, _path, _devices: [
+            snapshot.interpreter,
+            "-c",
+            "from pathlib import Path; import sys; Path(sys.argv[1]).touch()",
+            str(started),
+        ]
+        service.submit(
+            (
+                JobSnapshot(
+                    command="train",
+                    config_json="{}",
+                    project_root=str(tmp_path),
+                    cwd=str(tmp_path),
+                    interpreter=sys.executable,
+                    package_version="1",
+                    package_identity="hash",
+                ),
+            )
+        )
+        try:
+            with processes.worker_registration():
+                assert service.tick() == 1
+                deadline = time.monotonic() + 10
+                while service.storage.view().jobs[0].state not in {
+                    "completed",
+                    "failed",
+                    "recovery_required",
+                }:
+                    assert time.monotonic() < deadline
+                    processes.refresh()
+                    time.sleep(0.02)
+            assert service.storage.view().jobs[0].state == "completed"
+            assert started.exists()
+            assert not processes.reserved()
+        finally:
+            for process in processes._guardians.values():
+                process.wait(timeout=10)
+
+    monkeypatch.setattr(queue, "_queue_operation", run_configured_service)
+    queue._execute(argparse.Namespace(root=None, action="worker"))

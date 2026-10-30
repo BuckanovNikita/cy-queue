@@ -33,3 +33,28 @@ injected edges. `.importlinter` checks transitive policy isolation and inward la
 Lifecycle, cancellation, recovery, admission, multiuser, handoff and installation tests
 exercise the retained contracts. Real GPU/Agent/publication claims need separate live
 acceptance; fake NVML tests prove state/process behavior only.
+
+## GPU memory admission policy
+
+`[queue].max_used_memory_gib` is an optional positive finite numeric setting with a
+portable default of `2.0`. The strict configuration boundary accepts TOML integers
+and floats, rejects booleans/strings/zero/negative/nonfinite values, and resolves
+one float for entrypoint composition. The CLI reports it as a number in
+`cy-queue config --json`, as `max used memory gib` in text output, and as
+`max_used_memory_gib` in the worker startup log. No worker CLI override exists.
+
+The worker freezes the selected threshold at startup and injects it into both
+`QueueGPUInventory` and `QueueProcesses`. Each guardian payload retains the same
+value for the final fresh physical memory check before the exec gate opens.
+A GPU is available only when used memory is strictly below
+`max_used_memory_gib * 1024**3` bytes; equality is unavailable. Missing/invalid
+memory telemetry remains unavailable. This threshold concerns pre-existing GPU
+memory, not system RAM, a per-job memory quota, or a capacity reservation.
+Queue ownership, GPU holds, whole-device reservations, cancellation and acknowledged
+handoff remain unchanged. A manual reservation release still cannot bypass the
+fresh startup measurement.
+
+Changing the file affects the next worker start, not an existing worker or guardian.
+`config` reflects the current file, not the policy of an already running worker;
+its startup log records the applied value. Direct CY execution remains independent.
+Private payload compatibility and coordinated upgrades follow [migration](migration.md).

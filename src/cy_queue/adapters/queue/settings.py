@@ -9,7 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+from cy_queue.core.execution import DEFAULT_MAX_USED_MEMORY_GIB
 
 _MOUNTPOINT_FIELD = 4
 _SUPERBLOCK_FIELD = 2
@@ -45,6 +47,7 @@ class QueueSettings:
     coordination_root: Path
     config_path: Path
     root_source: Literal["config", "--root"]
+    max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB
 
 
 class _QueueConfiguration(BaseModel):
@@ -53,6 +56,9 @@ class _QueueConfiguration(BaseModel):
     name: str
     root: str
     coordination_root: str
+    max_used_memory_gib: float = Field(
+        default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False
+    )
 
     @field_validator("name")
     @classmethod
@@ -152,7 +158,8 @@ def load_queue_settings(
         ) from error
     except (tomllib.TOMLDecodeError, ValidationError) as error:
         raise ValueError(
-            "Invalid queue configuration: expected [queue] with name, root and coordination_root"
+            "Invalid queue configuration: expected [queue] with name, root and coordination_root; "
+            "optional max_used_memory_gib must be a positive finite number"
         ) from error
     configured_root = _absolute_path(config.root, "queue.root")
     coordination_root = _absolute_path(config.coordination_root, "queue.coordination_root")
@@ -172,5 +179,6 @@ def load_queue_settings(
         root=root,
         coordination_root=coordination_root,
         config_path=config_path,
+        max_used_memory_gib=config.max_used_memory_gib,
         root_source="config" if root_override is None else "--root",
     )

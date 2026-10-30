@@ -29,3 +29,22 @@ active cleanup is verified. Preserve all records created since upgrade; changed
 snapshots again need explicit cancellation/resubmission rather than identity editing.
 Neither source checkout is assumed to be published on PyPI. Offline delivery consists
 of source and externally prepared dependencies, not registry publication by this tool.
+
+## Configurable memory threshold
+
+Queue 0.1.6 adds optional `queue.max_used_memory_gib`; existing configuration files
+retain the 2.0 GiB default. Stop and replace workers through the coordinated procedure
+above, then inspect the effective configuration and the restarted worker's startup
+log. Editing a file alone does not change a live worker or guardian's policy.
+
+The shared `shared-cy-queue-v1` public records, snapshots and lock protocol are
+unchanged. The private `GuardianPayload` adds a positive finite
+`max_used_memory_gib` field. New code reads historical private payloads that omit it
+with the previous default of 2.0, so startup recovery keeps its original policy.
+New workers persist their selected value and guardians do not reread configuration.
+Older binaries reject the new private field and configuration option; do not mix
+versions. Before a downgrade, finish active work and resolve any uncertain new
+private payloads with the compatible newer installation. Retain the new records
+for diagnosis and history; never delete fields or rewrite ownership evidence to
+make an older reader accept them. Restore compatible configuration and both
+package installations together using the rollback procedure above.

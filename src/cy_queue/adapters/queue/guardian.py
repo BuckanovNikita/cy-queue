@@ -225,8 +225,13 @@ class _Guardian:
         self._persist()
         if self.store.cancelled(self.payload.job_id) or self.cancelled:
             raise InterruptedError("Queue job cancelled before native execution")
-        if not allocation_available(self.payload.devices):
-            self._defer_start("GPU memory is unavailable or at least 2 GiB at startup")
+        if not allocation_available(
+            self.payload.devices, max_used_memory_gib=self.payload.max_used_memory_gib
+        ):
+            self._defer_start(
+                "GPU memory is unavailable or at least "
+                f"{self.payload.max_used_memory_gib:g} GiB at startup"
+            )
             return False
         if self.lease is None:
             raise RuntimeError("Guardian launch is missing its capacity lease")

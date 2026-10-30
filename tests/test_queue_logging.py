@@ -14,16 +14,21 @@ from queue_cli_helpers import queue_command, queue_environment
 
 
 @pytest.mark.parametrize("level", [None, "DEBUG", "WARNING"])
+@pytest.mark.parametrize("threshold", [None, 12.0])
 def test_real_idle_worker_logs_by_default_and_stops_cleanly(
-    tmp_path: Path, level: str | None
+    tmp_path: Path, level: str | None, threshold: float | None
 ) -> None:
     queue_root = tmp_path / "queue"
     command = [*queue_command(tmp_path), "worker"]
     if level:
         command.extend(["--log-level", level])
+    environment = queue_environment(tmp_path)
+    if threshold is not None:
+        with (tmp_path / "queue.toml").open("a") as output:
+            output.write(f"max_used_memory_gib = {threshold}\n")
     with subprocess.Popen(  # noqa: S603 - fixed CLI with an isolated empty queue
         command,
-        env=queue_environment(tmp_path),
+        env=environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -47,6 +52,7 @@ def test_real_idle_worker_logs_by_default_and_stops_cleanly(
         assert stderr == ""
     else:
         assert "Starting queue worker" in stderr
+        assert f"max_used_memory_gib={2.0 if threshold is None else threshold}" in stderr
         assert str(queue_root) in stderr
         assert "idle" in stderr.lower()
         assert "Queue worker stopped" in stderr

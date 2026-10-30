@@ -294,13 +294,14 @@ def _execute(arguments: argparse.Namespace) -> None:
             "coordination_root": str(settings.coordination_root),
             "config_path": str(settings.config_path),
             "root_source": settings.root_source,
+            "max_used_memory_gib": settings.max_used_memory_gib,
         }
         if arguments.json:
             sys.stdout.write(json.dumps(values) + "\n")
         else:
             presentation = QueuePresentation()
             for key, value in values.items():
-                sys.stdout.write(f"{key.replace('_', ' ')}: {presentation.text(value)}\n")
+                sys.stdout.write(f"{key.replace('_', ' ')}: {presentation.text(str(value))}\n")
         return
 
     from cy_queue.adapters.queue.coordination import bind_coordination_root
@@ -322,10 +323,15 @@ def _execute(arguments: argparse.Namespace) -> None:
 
     root = initialize_runtime_environment()
     storage = NFSQueueStore(settings.root, identity, local_root=settings.coordination_root)
-    processes = QueueProcesses(storage, identity, local_root=settings.coordination_root)
+    processes = QueueProcesses(
+        storage,
+        identity,
+        local_root=settings.coordination_root,
+        max_used_memory_gib=settings.max_used_memory_gib,
+    )
     service = QueueService(
         storage,
-        QueueGPUInventory(),
+        QueueGPUInventory(max_used_memory_gib=settings.max_used_memory_gib),
         processes,
         identity,
         controls=GPUControls(processes.pool),
@@ -336,7 +342,7 @@ def _execute(arguments: argparse.Namespace) -> None:
             QueuePresentation().text(
                 f"Starting queue worker | queue={settings.name} root={storage.root} "
                 f"host={socket.gethostname()} "
-                f"uid={identity.owner_uid} max_used_memory_gib=2.0"
+                f"uid={identity.owner_uid} max_used_memory_gib={settings.max_used_memory_gib}"
             ),
         )
     _queue_operation(
