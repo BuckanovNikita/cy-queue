@@ -158,7 +158,7 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
     model = select_models(("fcos/resnet50_fpn",))[0]
     store = FileBatchEstimateStore()
     store.save(_case(_profile(model, assigned[:1]), 32))
-    store.save(_case(_profile(model, assigned), 8))
+    store.save(_case(_profile(model, assigned), 16))
     manifest = tmp_path / "manifest.json"
     manifest.write_text(
         json.dumps({"class_names": {"0": "class"}, "images": [{"split": "train", "boxes": 2}]})
@@ -182,10 +182,10 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
     monkeypatch.setattr(batch_resolution, "training_profile", profile)
     resolved, provenance = batch_resolution.resolve_native_batch(requested, prepared, None)
     assert observed == [("GPU-assigned-0", "GPU-assigned-1")]
-    assert resolved.train.batch == 8
+    assert resolved.train.batch == 16
     assert resolved.train.device == [0, 1]
     assert requested.train.batch is None
     assert json.loads(snapshot.config_json)["model"]["train"]["batch"] is None
     assert provenance is not None
-    assert provenance["global_batch"] == 8
-    assert provenance["per_gpu_batch"] == 4
+    assert provenance["global_batch"] == 16
+    assert provenance["per_gpu_batch"] == 8

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task": "Align queued automatic-batch integration fixture with CY per-GPU alignment",
+  "scope": [
+    "tests/test_batch_estimate_submission.py",
+    "docs/verification/batch-alignment-20261102/verification.md"
+  ],
+  "impact": "none",
+  "rationale": "Inspected the queued batch lookup regression and production boundaries: only its synthetic two-GPU capacity and expected selected values change from global 8/per-GPU 4 to global 16/per-GPU 8. No runtime modules, imports, package metadata, dependency contracts, architecture checking tools or effect ownership change. The existing test still verifies exact allocated-device evidence wins over a larger extrapolated recommendation while requested null and device mapping remain preserved."
+}
