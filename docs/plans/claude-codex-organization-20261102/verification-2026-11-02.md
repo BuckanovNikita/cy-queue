@@ -96,3 +96,12 @@ The accepted retry therefore covers the initialized environment. The original
 operational environment was never installed into or upgraded. Final changed
 Markdown validation checked eight files with zero issues; architecture
 acceptance and whitespace checks passed.
+
+## Queue publication
+
+Fresh independent review returned SHIP for the five-path documentation candidate.
+Commit `2392b90` was pushed to `origin/main` after changed-document validation,
+architecture acceptance, installed/source compatibility and whitespace checks
+passed. The source tree was clean after that push. This final receipt closure
+changes documentation only. Queue version `0.1.7` and all runtime/dependency files
+remain unchanged; no version tag, registry package or deployment is created.
