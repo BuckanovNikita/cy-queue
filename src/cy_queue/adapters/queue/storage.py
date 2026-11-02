@@ -503,6 +503,15 @@ class NFSQueueStore:
                 expected_state=expected_state,
             )
 
+    def mark_recovery_if_unchanged(self, observed: PublicJob, *, error: str) -> PublicJob:
+        """Recover only the exact observation whose execution ownership was lost."""
+        with self.transaction():
+            current = self._find(observed.id)
+            self._require_owner(current)
+            if current.revision != observed.revision or current.state != observed.state:
+                return current
+            return self.transaction_update(current.id, "recovery_required", error=error)
+
     def transaction_update(
         self,
         identifier: str,

@@ -202,9 +202,10 @@ class QueueProcesses:
                 and process_birth(claim.guardian_pid) == claim.guardian_born
             )
             if not live and job.state != "recovery_required":
-                self.store.update(
-                    job.id,
-                    "recovery_required",
+                if self.pool.claim_for(job.id) != claim:
+                    return
+                self.store.mark_recovery_if_unchanged(
+                    job,
                     error=("Guardian exited without verified cleanup; owner recovery required"),
                 )
             return
@@ -223,9 +224,8 @@ class QueueProcesses:
                 return
         elif time.time() - job.updated_at < _STARTUP_WINDOW_SECONDS:
             return
-        self.store.update(
-            job.id,
-            "recovery_required",
+        self.store.mark_recovery_if_unchanged(
+            job,
             error=("Execution state is uncertain; owner recovery required"),
         )
 

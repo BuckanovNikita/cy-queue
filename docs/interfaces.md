@@ -58,3 +58,20 @@ Changing the file affects the next worker start, not an existing worker or guard
 `config` reflects the current file, not the policy of an already running worker;
 its startup log records the applied value. Direct CY execution remains independent.
 Private payload compatibility and coordinated upgrades follow [migration](migration.md).
+
+## Concurrent job refresh and completion
+
+Worker recovery refresh compares its observed public-record revision and state inside
+the existing storage transaction before publishing a recovery transition. A newer
+completion, failure, cancellation or launch record remains unchanged; refresh does
+not replace newer outcomes or raise an expected race as an operation failure.
+
+After observing a dead guardian, refresh rereads its claim and proceeds only if the
+complete retained claim still matches. A released or changed claim waits for a fresh
+observation instead of publishing recovery from a stale ownership snapshot.
+
+This guard preserves genuine lost-execution recovery and existing ownership checks.
+An unchanged terminal record with a dead retained claim can still require recovery:
+a terminal outcome alone does not prove verified lease release. Guardians retain
+cleanup/publication/release ownership; public record formats and process deadlines
+are unchanged. Failed verification continues to require explicit owner recovery.
