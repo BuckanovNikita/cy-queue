@@ -37,7 +37,7 @@ release. No child delegation. Fresh independent review follows parent verificati
 - [x] Update patch version to 0.1.7 and current interface guidance; inspect README/migration and record no-change reasons for unchanged CLI/protocol.
 - [x] Run configured full pytest, Ruff/format, strict mypy, import contracts, source/installed metadata/normal resolution, pip consistency and help with current CY 0.44.6; rerun the original real-process failure case.
 - [x] Validate changed Markdown/links, obtain fresh independent integrated review, reconcile all task-owned changes and validate architecture acceptance.
-- [ ] Commit using Conventional Commits and push verified main; no queue tags, GitHub Release objects, assets or registry publication. Reconcile final committed CY/queue sources before CY delivery.
+- [x] Commit using Conventional Commits and push verified main; no queue tags, GitHub Release objects, assets or registry publication. Reconcile final committed CY/queue sources before CY delivery.
 
 Only isolated task-owned environments/processes and temporary test records are used.
 Physical GPU/multiuser/live-stand outcomes remain outside these CPU/fake-telemetry checks.

@@ -102,3 +102,12 @@ are recorded below before the implementation commit. Remote delivery remains pen
 
 Parent architecture acceptance validation exited zero. Changed Markdown/local links
 (four documents) and final diff whitespace checks passed before commit.
+
+## Source delivery
+
+Implementation commit b976789301d814a4249d3683739b8d6918819a73 (queue 0.1.7) was pushed to main and its remote SHA
+was verified after all acceptance gates passed. Committed source/installed versions
+and import locations still match CY 0.44.6 / queue 0.1.7; no hook changed metadata.
+No queue tag, GitHub Release object, distribution asset, registry publication or
+operational installation was created. This final documentation closure changes no
+runtime inputs; the parent CY ledger records the paired CY delivery and final refs.
