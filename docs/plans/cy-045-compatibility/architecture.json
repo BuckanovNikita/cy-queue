@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "task": "Queue compatibility with CY 0.45 saved-estimate listing",
+  "scope": [
+    "pyproject.toml",
+    "tests/test_standalone_training.py",
+    "docs/interfaces.md",
+    "docs/plans/cy-045-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "AGENTS.md and docs/interfaces.md require cy_queue -> clearml_yolo with no reverse dependency, adapter-owned effects and bounded source/installed compatibility before delivery.",
+  "modules": [
+    {
+      "id": "metadata",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare tested CY compatibility and queue distribution identity",
+      "interface": "cy-queue 0.1.8 requires clearml-yolo>=0.38,<0.46; normal source installation must satisfy metadata and preserve consumed interfaces",
+      "layer": "distribution metadata",
+      "allowed_dependencies": [
+        "Existing declared runtime/dev dependencies and tested bounded CY dependency"
+      ],
+      "forbidden_dependencies": [
+        "Unbounded or untested future CY minors",
+        "Reverse CY dependency on cy-queue"
+      ],
+      "effects": "No runtime effects; resolver reads distribution compatibility declarations. Installation is coordinated by parent in isolated environment.",
+      "contracts": [
+        "installation",
+        "imports"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "installation",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Reject incompatible future CY minors and stale installed/source CY or queue metadata; preserve outside-checkout entrypoints.",
+      "check": "pair"
+    },
+    {
+      "id": "imports",
+      "path": ".importlinter",
+      "status": "existing",
+      "rules": "Queue dependencies point inward; queue policy does not import CY effects or configuration.",
+      "check": "static"
+    }
+  ],
+  "checks": [
+    {
+      "id": "static",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo ruff check .; uv run --frozen --no-sync --project ../clearml-yolo ruff format --check .; uv run --frozen --no-sync --project ../clearml-yolo mypy .; uv run --frozen --no-sync --project ../clearml-yolo lint-imports",
+      "expectation": "All configured static/import checks pass without relaxing contracts.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-045-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "pair",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo pytest -q",
+      "expectation": "Complete ordinary suite passes, including dependency bounds, installed/source identity, inert command/architecture negative cases and queue integration.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-045-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo python ../clearml-yolo/scripts/check_docs.py --root . --all",
+      "expectation": "Queue Markdown and local links/anchors pass; new evidence included explicitly before staging.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-045-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "Update docs/interfaces.md with CY 0.45 support and direct read-only listing independence. Record inspected unchanged migration/shared-record behavior.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh native reviewer review_companions_final",
+    "evidence": "docs/plans/cy-045-compatibility/review.md",
+    "reconciliation": "Reviewed complete tracked/untracked compatibility metadata, regression and documentation diff; no runtime module or shared protocol change; original dirty checkout excluded. Actual committed pair remains a separate required delivery gate. The actual committed CY v0.45.0/queue0.1.8 pair now passed normal resolution, identity/module-byte checks and all583 ordinary queue cases; physical opt-ins remain deselected."
+  }
+}
