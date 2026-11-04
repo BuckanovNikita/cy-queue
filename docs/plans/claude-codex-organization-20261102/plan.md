@@ -44,3 +44,17 @@ environments. Verify the current CY/queue source pair with normal resolution in 
 task-owned environment, run native required checks, review the final documentation
 diff, then commit and evaluate each native release. No runtime or version-bound
 change is intended; the no-impact record remains applicable.
+
+## Preserved-checkout reconciliation, 2026-11-04
+
+- [x] Compare the preserved instruction draft with the current published source,
+  including file type and bytes; retain the original checkout and its index.
+- [x] Confirm that published migration and receipt commits supersede the old
+  unpublished-task status rather than reapplying the same instruction change.
+- [x] Record fresh current-source pair checks and documentation validation before
+  the coordinating parent's final review and delivery.
+
+The pending physical queue acceptance is separate from instruction migration.
+Ordinary tests and instruction-file equality do not close the opt-in CUDA/NCCL
+scenarios. The existing no-impact architecture record covers this documentation
+reconciliation; product modules, dependencies and executable contracts are unchanged.

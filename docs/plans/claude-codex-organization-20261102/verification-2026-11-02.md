@@ -105,3 +105,58 @@ architecture acceptance, installed/source compatibility and whitespace checks
 passed. The source tree was clean after that push. This final receipt closure
 changes documentation only. Queue version `0.1.7` and all runtime/dependency files
 remain unchanged; no version tag, registry package or deployment is created.
+
+## Preserved draft reconciliation, 2026-11-04
+
+A fresh origin fetch resolves `main` to `4cf32f0cd84730aebd3cf930829f80ba47d5af24`
+(queue 0.1.8). Its history includes the published instruction migration `2392b90`
+and receipt completion `0139152`. The preserved draft checkout is based on
+`4e18ec622121c228474dd454b0b46d4af902cf92`; its earlier uncommitted/stale-pair
+statements describe that older checkpoint, not the current published outcome.
+
+Byte comparison confirms that the preserved `AGENTS.md`, regular `CLAUDE.md`
+containing `@AGENTS.md`, and no-impact architecture record already match the
+published versions. Its draft plan and verification document are superseded by
+the completed publication records above. The draft checkout, index and unrelated
+changes were preserved without reset, stash, duplicate migration or environment
+upgrade. Only this dated reconciliation and its plan amendment change in the
+isolated review candidate. Runtime modules, dependency bounds and executable
+architecture contracts remain unchanged; the existing no-impact record applies.
+
+Fresh isolated source pairing used CY `8be76e4faaeeb20305f4b9e3be856d8855fc5609`
+(0.45.0) and queue `4cf32f0` (0.1.8). Normal editable resolution used the CY
+lockfile's registry versions and unchanged approved external source revisions:
+digital-metrics `6e801be1564dce458294eb23592cc1aa0939c4d9` and report-generator
+`d10aa395d08f738e92e04e076cee93b3a993bf8f`. No `--no-deps` shortcut or shared
+environment mutation was used. Source and installed distribution versions match;
+queue's `clearml-yolo>=0.38,<0.46` bound includes this CY version.
+
+The ordinary queue suite passed: **583 passed, seven physical cases deselected**,
+19 dependency deprecation warnings, 147.55 seconds. Ruff lint and formatting passed,
+both import contracts passed, and actual `cy-queue --help` succeeded. The first
+strict mypy attempt reported missing YAML and pandas stubs in the newly prepared
+environment. Their locked development packages were then installed with copy mode;
+this setup correction changes no repository dependency requirement or source.
+Strict mypy then passed all 70 source files. Final `uv pip check` passed with
+all 256 installed packages compatible. All four inspected/changed Markdown files
+passed structure and local-link validation; architecture planning and acceptance
+validation and `git diff --check` passed. These checks establish file structure
+and source compatibility, not a fresh Claude/Codex session's loaded context.
+
+Physical CUDA/NCCL acceptance remains open. The seven opt-in scenarios require at
+least two distinct physical devices: direct/queued eager and compiled pipelines,
+queued rank failure, cancellation and guardian death. No physical suite was launched
+or relabeled successful. Valid queue configuration must preserve the host coordination
+root, while explicit project/evidence arguments own the test outputs. The coordinating
+task must establish suitable hardware, run those scenarios and verify owned cleanup.
+
+These results reconcile the preserved instruction draft and verify the stated source
+pair only. They are not final acceptance of later integrated CY changes, proposed
+release metadata or physical execution. The coordinating parent retains final-source
+pairing, fresh review and Git delivery ownership.
+
+Fresh independent review accepted the final two-file documentation reconciliation.
+The parent inspected the diff, confirmed that the no-impact architecture scope
+matches it, and re-fetched both origins: the source identities above remain current.
+The review excludes physical execution and the separately proposed CY 0.46 pair.
+This documentation-only delivery does not change package versions or runtime files.
