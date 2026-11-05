@@ -53,8 +53,8 @@ see docs/development.md.
 ## Project workflow
 
 - Record module/import/effect ownership (a task `architecture.json` under `docs/plans/`
-  or `docs/bugs/`) before implementation; use the module architecture planning and
-  Python project workflow skills when available.
+  or `docs/bugs/`) before implementation; use the Python project workflow and module
+  architecture planning skills.
 - Substantive work requires independent review after integrated verification.
 - Preserve unrelated changes and local overrides; do not bypass hooks or alter shared
   services.
