@@ -24,7 +24,19 @@ def test_supported_cy_range_includes_saved_estimate_listing_minor() -> None:
         if (parsed := Requirement(value)).name == "clearml-yolo"
     )
     assert requirement.specifier.contains("0.45.0")
-    assert not requirement.specifier.contains("0.46.0")
+
+
+def test_supported_cy_range_includes_forced_estimation_minor() -> None:
+    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
+        "project"
+    ]
+    requirement = next(
+        parsed
+        for value in queue["dependencies"]
+        if (parsed := Requirement(value)).name == "clearml-yolo"
+    )
+    assert requirement.specifier.contains("0.46.0")
+    assert not requirement.specifier.contains("0.47.0")
 
 
 def test_current_source_and_installed_versions_are_compatible() -> None:

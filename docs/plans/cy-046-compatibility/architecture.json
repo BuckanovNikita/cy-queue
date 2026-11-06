@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "task": "Queue compatibility with CY 0.46 forced estimation and HF DINOv3 weights",
+  "scope": [
+    "pyproject.toml",
+    "tests/test_standalone_training.py",
+    "docs/interfaces.md",
+    "docs/plans/cy-046-compatibility"
+  ],
+  "impact": "modules",
+  "rules": "AGENTS.md and docs/interfaces.md require cy_queue -> clearml_yolo with no reverse dependency, adapter-owned effects and bounded source/installed compatibility before delivery.",
+  "modules": [
+    {
+      "id": "metadata",
+      "path": "pyproject.toml",
+      "change": "modify",
+      "responsibility": "Declare tested CY compatibility and queue distribution identity",
+      "interface": "cy-queue 0.1.9 requires clearml-yolo>=0.38,<0.47; normal source installation must satisfy metadata and preserve consumed interfaces",
+      "layer": "distribution metadata",
+      "allowed_dependencies": [
+        "Existing declared runtime/dev dependencies and tested bounded CY dependency"
+      ],
+      "forbidden_dependencies": [
+        "Unbounded or untested future CY minors",
+        "Reverse CY dependency on cy-queue"
+      ],
+      "effects": "No runtime effects; the resolver reads distribution compatibility declarations. The parent installed the pair into the CY development environment with no queue workers running.",
+      "contracts": [
+        "installation",
+        "imports"
+      ]
+    }
+  ],
+  "contracts": [
+    {
+      "id": "installation",
+      "path": "tests/test_standalone_training.py",
+      "status": "existing",
+      "rules": "Reject incompatible future CY minors and stale installed/source CY or queue metadata; preserve outside-checkout entrypoints.",
+      "check": "pair"
+    },
+    {
+      "id": "imports",
+      "path": ".importlinter",
+      "status": "existing",
+      "rules": "Queue dependencies point inward; queue policy does not import CY effects or configuration.",
+      "check": "static"
+    }
+  ],
+  "checks": [
+    {
+      "id": "static",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo ruff check .; uv run --frozen --no-sync --project ../clearml-yolo ruff format --check .; uv run --frozen --no-sync --project ../clearml-yolo mypy .; uv run --frozen --no-sync --project ../clearml-yolo lint-imports",
+      "expectation": "All configured static/import checks pass without relaxing contracts.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-046-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "pair",
+      "kind": "imports",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo pytest -q",
+      "expectation": "Complete ordinary suite passes, including dependency bounds, installed/source identity, inert command/architecture negative cases and queue integration.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-046-compatibility/verification.md"
+      }
+    },
+    {
+      "id": "docs",
+      "kind": "documentation",
+      "command": "uv run --frozen --no-sync --project ../clearml-yolo python ../clearml-yolo/scripts/check_docs.py --root . --all",
+      "expectation": "Queue Markdown and local links/anchors pass; new evidence included explicitly before staging.",
+      "result": {
+        "status": "passed",
+        "exit_code": 0,
+        "evidence": "docs/plans/cy-046-compatibility/verification.md"
+      }
+    }
+  ],
+  "documentation": "docs/interfaces.md records CY 0.46 support: no queue-imported CY module changed, and ordinary estimate keys are unchanged. README and migration guidance were reviewed; their compatible-pair and coordinated-upgrade requirements still apply unchanged.",
+  "review": {
+    "status": "accepted",
+    "reviewer": "Fresh independent read-only general-purpose subagent (accept with fixes; fixes applied)",
+    "evidence": "docs/plans/cy-046-compatibility/review.md",
+    "reconciliation": "The complete task-owned diff: pyproject.toml (version 0.1.9, CY bound <0.47), tests/test_standalone_training.py (upper-bound assertion moved to the new 0.46 regression), docs/interfaces.md, and the new docs/plans/cy-046-compatibility records. Runtime modules, imports, shared records and ownership are unchanged. No unrelated changes exist; the checkout was clean at 29d2284."
+  }
+}

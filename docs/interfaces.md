@@ -9,7 +9,21 @@ that range. The installation regression rejects stale editable metadata as well 
 incompatible versions. Follow [paired release checks](development.md#paired-release-checks)
 before publishing either repository; do not remove an upper bound to admit untested minors.
 
-Queue 0.1.8 admits CY 0.45 through the bounded requirement `clearml-yolo>=0.38,<0.46`.
+Queue 0.1.9 admits CY 0.46 through the bounded requirement `clearml-yolo>=0.38,<0.47`.
+CY 0.46 adds forced batch estimation (`cy-batch-estimate --force`) and official
+Hugging Face DINOv3 weight preparation. None of the CY runtime modules that the queue
+imports directly changed between v0.45.1 and v0.46.0, and the queue neither composes nor
+forwards `--force`. Ordinary saved estimate records still omit the new `force` setting,
+so their keys stay unchanged. The worker's allocation-aware batch resolution keeps its
+algorithm, but compatible forced records are now eligible candidates. Recommendations
+from them are labelled `forced/background-sensitive` in training provenance. A
+catalogue that contains forced records needs CY 0.46 or later readers, which the
+coordinated [migration](migration.md) upgrade already ensures. Queued DEIMv2 `l`/`x`
+pretrained jobs without explicit weights may convert the gated Hugging Face
+`facebook/dinov3-*` checkpoint inside the admitted process. Such workers inherit CY's
+Hugging Face credential and cache requirements.
+
+Queue 0.1.8 admitted CY 0.45 through the bounded requirement `clearml-yolo>=0.38,<0.46`.
 CY's `cy-batch-estimate --list` inspects saved estimate coverage directly, without
 queue settings, workers, reservations or GPU discovery. A model with any usable
 saved estimate is covered; that report does not promise compatibility with a queued
