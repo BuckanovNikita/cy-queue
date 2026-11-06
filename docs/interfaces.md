@@ -9,7 +9,7 @@ that range. The installation regression rejects stale editable metadata as well 
 incompatible versions. Follow [paired release checks](development.md#paired-release-checks)
 before publishing either repository; do not remove an upper bound to admit untested minors.
 
-Queue 0.1.8 admits CY 0.45 through the bounded requirement `clearml-yolo>=0.38,<0.46`.
+Queue 0.1.9 admits CY 0.46 through the bounded requirement `clearml-yolo>=0.38,<0.47`.
 CY's `cy-batch-estimate --list` inspects saved estimate coverage directly, without
 queue settings, workers, reservations or GPU discovery. A model with any usable
 saved estimate is covered; that report does not promise compatibility with a queued
@@ -18,6 +18,16 @@ job's eventual allocation, recipe or workload. Submission still preserves
 snapshot, shared-record or ownership protocol changes accompany this compatibility
 update; coordinated environment upgrades and resubmission follow
 [migration](migration.md).
+
+CY 0.46 adds the direct estimator's optional `--force` policy. Ordinary estimate
+keys remain stable, and forced measurements have distinct keys and retain their
+measurement provenance. Estimate records are parsed by the installed CY version;
+upgrade the pair together before using newly written catalogues. This option does
+not change queue GPU admission, reservations or ownership checks. Queue submission
+continues to freeze native settings and defer automatic batch resolution until
+allocation; no new queue runtime interface or shared-record protocol accompanies
+the compatibility update. The scoped [compatibility plan](plans/cy-046-compatibility/plan.md)
+records the required final paired verification and review gates.
 
 | CY interface | Queue caller and invariant |
 | --- | --- |

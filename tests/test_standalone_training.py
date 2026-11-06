@@ -14,7 +14,7 @@ from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, validate_
 from cy_queue.entrypoints.queue import _parser
 
 
-def test_supported_cy_range_includes_saved_estimate_listing_minor() -> None:
+def test_supported_cy_range_includes_forced_batch_estimation_minor() -> None:
     queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
         "project"
     ]
@@ -23,8 +23,8 @@ def test_supported_cy_range_includes_saved_estimate_listing_minor() -> None:
         for value in queue["dependencies"]
         if (parsed := Requirement(value)).name == "clearml-yolo"
     )
-    assert requirement.specifier.contains("0.45.0")
-    assert not requirement.specifier.contains("0.46.0")
+    assert requirement.specifier.contains("0.46.0")
+    assert not requirement.specifier.contains("0.47.0")
 
 
 def test_current_source_and_installed_versions_are_compatible() -> None:
