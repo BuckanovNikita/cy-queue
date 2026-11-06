@@ -37,3 +37,21 @@ review and the final paired source/installed evidence are prerequisites to deliv
 - [x] Widen the tested bound, bump the queue patch version, and update compatibility guidance.
 - [x] Install the pair with normal resolution, then run the static, import and documentation checks and the complete queue suite.
 - [x] Fresh independent review; commit; push CY master with tag `v0.46.0` and queue `main`; verify the remote refs.
+
+## Collected preparation work (2026-11-06)
+
+An earlier branch, `prep/cy-046-compatibility` (`3ebd78a`), prepared the same queue
+0.1.9 change against a frozen CY 0.46.0 candidate. It never reached `main`. It is
+merged here so all of its work is kept:
+
+- [preparation plan](preparation-plan.md), [verification](preparation-verification.md)
+  and [architecture record](preparation-architecture.json);
+- the [2026-11-04 verification](verification-2026-11-04.md);
+- the [2026-11-05 queue evidence](../../evidence/2026-11-05-current-queue.md).
+
+The plan, verification and architecture files are kept unchanged under `preparation-*`
+names. The only edits repoint their local links to those names. Where the branches
+conflict, the metadata, test and interface text from `main` win, because that state
+passed the committed-pair check. The branch's version, bound and regression are
+equivalent; its interface note about unchanged admission and ownership is added to
+[interfaces](../../interfaces.md).

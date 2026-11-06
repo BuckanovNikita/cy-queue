@@ -21,7 +21,8 @@ catalogue that contains forced records needs CY 0.46 or later readers, which the
 coordinated [migration](migration.md) upgrade already ensures. Queued DEIMv2 `l`/`x`
 pretrained jobs without explicit weights may convert the gated Hugging Face
 `facebook/dinov3-*` checkpoint inside the admitted process. Such workers inherit CY's
-Hugging Face credential and cache requirements.
+Hugging Face credential and cache requirements. The update does not change queue GPU
+admission, reservations or ownership checks.
 
 Queue 0.1.8 admitted CY 0.45 through the bounded requirement `clearml-yolo>=0.38,<0.46`.
 CY's `cy-batch-estimate --list` inspects saved estimate coverage directly, without
