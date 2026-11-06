@@ -1,5 +1,7 @@
 # CY 0.46 compatibility — 2026-11-05
 
+> Superseded by [plan.md](plan.md) (ledger note, 2026-11-07).
+
 The selected parent integration combines the DINOv3 fix, scoped campaign
 improvements and forced batch-estimation support into CY 0.46.0. Queue 0.1.8
 currently excludes that minor. Prepare queue 0.1.9 with the next tested bounded

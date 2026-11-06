@@ -43,10 +43,19 @@ that constraint. Shared public protocol, job snapshots and lock records stay unc
 - [x] Parent obtains fresh independent review and reconciles the actual task-owned diff.
 - [x] Validate final architecture acceptance and documentation.
   The task-scoped Conventional Commit follows these accepted checks.
-- [ ] Parent refreshes the installed pair against the actual CY release commit before publication.
+- [x] Parent refreshes the installed pair against the actual CY release commit before publication.
 
 Implementation is sequential because settings, process transport and entrypoint
 composition share one contract. Parent and companion agents independently own
 private environment configuration, CY release, paired installation and corporate
 portable documentation. This bounded agent must not delegate further. No physical
 GPU workload or running-worker intervention is needed for these checks.
+
+## Ledger reconciliation, 2026-11-07
+
+The last box is ticked. The final pair was resolved and installed normally as
+CY 0.44.4 with queue 0.1.6 and passed 544 queue tests with seven physical-GPU cases
+deselected, before publication. CY published `v0.44.4` and queue main at
+`2fbaed25fa7c572757d30cb9b1b343d22e645e3a`. Evidence: CY T046 and CY
+`specs/006-batch-training/speedup/verification.md` (lines 132–141 for the pair,
+157–166 for the verified publication).
