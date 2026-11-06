@@ -36,4 +36,4 @@ review and the final paired source/installed evidence are prerequisites to deliv
 - [x] Add a regression for the next CY minor and observe it fail against the old bound.
 - [x] Widen the tested bound, bump the queue patch version, and update compatibility guidance.
 - [x] Install the pair with normal resolution, then run the static, import and documentation checks and the complete queue suite.
-- [ ] Fresh independent review; commit; push CY master with tag `v0.46.0` and queue `main`; verify the remote refs.
+- [x] Fresh independent review; commit; push CY master with tag `v0.46.0` and queue `main`; verify the remote refs.

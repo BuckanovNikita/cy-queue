@@ -41,3 +41,17 @@ The warnings come from upstream Hydra-Zen and Pydantic deprecations. The run inc
 installed-source identity, outside-checkout entrypoints, allocation-aware automatic
 batch lookup and the architecture negative cases. No physical GPU, NFS or ClearML
 publication outcome is claimed.
+
+## Committed pair accepted (2026-11-06)
+
+The pair was CY master `9582e4c` (`0.46.0`, tag `v0.46.0` on `60edd4b`) and queue
+commit `4498e64` (`0.1.9`). Results:
+
+- A normal dependency-enabled reinstall of both editable sources succeeded, and
+  `uv pip check` reported all 281 packages compatible.
+- Installed metadata reads `0.46.0` / `0.1.9`, matching source.
+- The complete queue suite passed **584 tests, 7 physical opt-ins deselected**, with
+  19 warnings, exit 0 (131.42 s).
+- `cy-queue --help` exited 0.
+
+Delivery pushes CY `master` and `v0.46.0` first, then queue `main`.
