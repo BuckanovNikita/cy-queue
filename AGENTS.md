@@ -7,6 +7,9 @@ package is published on an index.
 
 ## Read first
 
+Read the [product specification](specs/baseline.md) for problems, required behavior
+and acceptance boundaries.
+
 Read development, interfaces and migration before any change:
 
 - [docs/development.md](docs/development.md): environment, checks, opt-in GPU tests,

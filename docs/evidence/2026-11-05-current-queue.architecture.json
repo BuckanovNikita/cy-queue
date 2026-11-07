@@ -1,7 +1,0 @@
-{
-  "schema_version": 1,
-  "task": "Record actual current-source single-GPU queue acceptance and its limits",
-  "scope": ["docs/evidence/2026-11-05-current-queue.md"],
-  "impact": "none",
-  "rationale": "Inspected queue submission, train/pipeline output contracts and private native/readback/cleanup evidence. This change adds dated verification prose only; product modules, dependency metadata, runtime configuration, composition targets and executable checks remain unchanged. External acceptance harness fixes are recorded separately with their own module architecture checks."
-}
