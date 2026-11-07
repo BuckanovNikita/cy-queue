@@ -12,4 +12,4 @@ These terms distinguish experiment outcome from current capacity.
 
 **Hold**: A user's explicit exclusion of a device from new allocations, independent of a running job's reservation.
 
-**Recovery required**: A job outcome whose process ownership or cleanup remains uncertain and needs its owner's explicit resolution.
+**Recovery required**: A job state requiring its owner to resolve uncertain process ownership or cleanup. It does not replace the scientific outcome.

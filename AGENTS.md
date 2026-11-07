@@ -66,3 +66,11 @@ see docs/development.md.
 - Use Conventional Commits; with separate push authorization, push verified changes to `main` of
   `git@github.com:BuckanovNikita/cy-queue.git` when delivery is authorized.
 - No version-tag automation, deployment or registry publication is established.
+
+## Specification rewrites
+
+Compare the original behavior, conditions and exceptions with their new authoritative
+homes, including requirements embedded in scenarios. Separate approved policy changes
+from wording changes; resolve overloaded terms before editing. Retain compatibility
+obligations, remove historical status claims, and have the reviewer compare meaning
+against the original source rather than judge length or wording alone.
