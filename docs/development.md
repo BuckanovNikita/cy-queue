@@ -30,10 +30,8 @@ root so real GPU locks still coordinate with other users. They override only the
 metadata root with the scenario-owned path. Do not change host coordination to bypass
 other workloads. The multiuser harness uses controlled devices and test-owned identities.
 
-Architecture planning and acceptance for the extraction are recorded in
-[architecture.json](architecture.json). New tasks keep their own architecture and
-dated verification records. Cross-repository work follows the active CY task ledger
-and fresh independent review requirement.
+Cross-repository work follows the active CY task ledger and fresh independent
+review requirement. Keep verification results in dated evidence.
 
 ## Paired release checks
 
@@ -65,6 +63,6 @@ after checking the newly supported interfaces. Future minors are not assumed com
 
 Public source delivery uses Conventional Commits on `main` and
 `git@github.com:BuckanovNikita/cy-queue.git`. Update the package version for a package
-fix, verify and review the pair, commit only task-owned changes, then push the
+fix, verify and review the pair, commit only task-owned changes, then, with separate push authorization, push the
 authorized branch and verify remote identity. There is no version-tag automation,
 deployment, GitHub Release object, asset upload or package registry publication.

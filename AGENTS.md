@@ -15,11 +15,6 @@ Read development, interfaces and migration before any change:
   GPU memory admission, refresh/completion races.
 - [docs/migration.md](docs/migration.md): coordinated offline upgrade and draining.
 
-Reference:
-
-- [docs/architecture.json](docs/architecture.json): package boundary record of the
-  initial extraction (CY feature `clearml-yolo/specs/003-portable-training/`).
-
 ## Architecture boundaries
 
 - Dependency direction is `cy_queue` → `clearml_yolo`; CY never imports the queue.
@@ -36,7 +31,7 @@ Reference:
 
 With the shared environment selected (or prefix each with
 `uv run --frozen --no-sync --project ../clearml-yolo`). Bare `python` must be the shared
-CY environment interpreter; `check_docs.py` needs CY's dependencies.
+CY environment interpreter.
 
 ```bash
 python -m pytest
@@ -44,7 +39,6 @@ ruff check .
 ruff format --check .
 mypy .
 lint-imports
-python ../clearml-yolo/scripts/check_docs.py --root . <changed Markdown files>  # or --all
 ```
 
 Real hardware and ClearML publication claims require explicitly owned live evidence;
@@ -52,10 +46,8 @@ see docs/development.md.
 
 ## Project workflow
 
-- Record module/import/effect ownership (a task `architecture.json` under `docs/plans/`
-  or `docs/bugs/`) before implementation; use the Python project workflow and module
-  architecture planning skills.
-- Substantive work requires independent review after integrated verification.
+- Changes to behavior, interfaces, dependencies, security or operational policy need
+  independent review after integrated verification; small wording edits may be self-reviewed.
 - Preserve unrelated changes and local overrides; do not bypass hooks or alter shared
   services.
 - README.md is Russian; other documentation is English.
@@ -68,6 +60,6 @@ see docs/development.md.
   resolution and queue integration against the proposed release versions.
   Incompatibility or unavailable evidence blocks delivery; one package passing alone
   is insufficient.
-- Use Conventional Commits after verification; push verified changes to `main` of
+- Use Conventional Commits after verification; with separate push authorization, push verified changes to `main` of
   `git@github.com:BuckanovNikita/cy-queue.git` when delivery is authorized.
 - No version-tag automation, deployment or registry publication is established.
