@@ -9,30 +9,19 @@ that range. The installation regression rejects stale editable metadata as well 
 incompatible versions. Follow [paired release checks](development.md#paired-release-checks)
 before publishing either repository; do not remove an upper bound to admit untested minors.
 
-Queue 0.1.9 admits CY 0.46 through the bounded requirement `clearml-yolo>=0.38,<0.47`.
-CY 0.46 adds forced batch estimation (`cy-batch-estimate --force`) and official
-Hugging Face DINOv3 weight preparation. None of the CY runtime modules that the queue
-imports directly changed between v0.45.1 and v0.46.0, and the queue neither composes nor
-forwards `--force`. Ordinary saved estimate records still omit the new `force` setting,
-so their keys stay unchanged. The worker's allocation-aware batch resolution keeps its
-algorithm, but compatible forced records are now eligible candidates. Recommendations
-from them are labelled `forced/background-sensitive` in training provenance. A
-catalogue that contains forced records needs CY 0.46 or later readers, which the
-coordinated [migration](migration.md) upgrade already ensures. Queued DEIMv2 `l`/`x`
-pretrained jobs without explicit weights may convert the gated Hugging Face
-`facebook/dinov3-*` checkpoint inside the admitted process. Such workers inherit CY's
-Hugging Face credential and cache requirements. The update does not change queue GPU
-admission, reservations or ownership checks.
+## Batch evidence and model preparation
 
-Queue 0.1.8 admitted CY 0.45 through the bounded requirement `clearml-yolo>=0.38,<0.46`.
-CY's `cy-batch-estimate --list` inspects saved estimate coverage directly, without
-queue settings, workers, reservations or GPU discovery. A model with any usable
-saved estimate is covered; that report does not promise compatibility with a queued
-job's eventual allocation, recipe or workload. Submission still preserves
-`batch=null` until the existing allocation-aware worker resolution. No queue
-snapshot, shared-record or ownership protocol changes accompany this compatibility
-update; coordinated environment upgrades and resubmission follow
-[migration](migration.md).
+Submission preserves `batch=null` until allocation-aware worker resolution. Saved
+estimate coverage does not promise compatibility with the eventual allocation, recipe
+or workload. Compatible forced estimates may be used and must remain visibly
+`forced/background-sensitive` in training provenance. Every participating reader must
+support the catalogue format; follow coordinated [migration](migration.md) when that
+format or installation identity changes. The queue does not compose or forward the
+standalone estimator's `--force` option.
+
+Queued DEIMv2 `l`/`x` pretrained execution may prepare a gated Hugging Face DINOv3
+checkpoint inside the admitted process. It inherits the owner's credentials and CY
+cache/access requirements; preparation cannot bypass admission or ownership checks.
 
 | CY interface | Queue caller and invariant |
 | --- | --- |

@@ -1,7 +1,7 @@
 # Coordinated offline upgrade
 
-The extracted distribution changes Python module paths and installation identity.
-Its wire record protocol remains `shared-cy-queue-v1`. Existing records, history,
+Installation changes may invalidate frozen job identity.
+The public wire record protocol is `shared-cy-queue-v1`. Existing records, history,
 configuration locations, coordination roots, lock namespaces and ownership evidence
 must remain intact. Do not delete queue state to make an upgrade pass.
 
@@ -16,7 +16,7 @@ must remain intact. Do not delete queue state to make an upgrade pass.
    CY from source first, then `cy-queue` into the same Python environment. Both package
    versions/code and the interpreter environment contribute to snapshot identity.
 4. Keep the existing `queue.toml`, metadata root and coordination root. The default
-   settings path remains `clearml-yolo/queue.toml`; extraction does not rename it.
+   settings path remains `clearml-yolo/queue.toml`; compatible installation preserves it.
 5. Pending snapshots from the changed installation must be cancelled and resubmitted
    using the new environment. They are retained as history and are never silently
    rewritten or automatically retried. Uncertain jobs still require owner recovery.
@@ -32,16 +32,15 @@ of source and externally prepared dependencies, not registry publication by this
 
 ## Configurable memory threshold
 
-Queue 0.1.6 adds optional `queue.max_used_memory_gib`; existing configuration files
-retain the 2.0 GiB default. Stop and replace workers through the coordinated procedure
+The optional `queue.max_used_memory_gib` setting defaults to 2.0 GiB when omitted. Stop and replace workers through the coordinated procedure
 above, then inspect the effective configuration and the restarted worker's startup
 log. Editing a file alone does not change a live worker or guardian's policy.
 
 The shared `shared-cy-queue-v1` public records, snapshots and lock protocol are
-unchanged. The private `GuardianPayload` adds a positive finite
-`max_used_memory_gib` field. New code reads historical private payloads that omit it
+unchanged. The private `GuardianPayload` carries a positive finite
+`max_used_memory_gib` field. Compatible readers accept historical private payloads that omit it
 with the previous default of 2.0, so startup recovery keeps its original policy.
-New workers persist their selected value and guardians do not reread configuration.
+Workers persist their selected value and guardians do not reread configuration.
 Older binaries reject the new private field and configuration option; do not mix
 versions. Before a downgrade, finish active work and resolve any uncertain new
 private payloads with the compatible newer installation. Retain the new records
