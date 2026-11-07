@@ -98,17 +98,6 @@
       }
     },
     {
-      "id": "docs",
-      "kind": "documentation",
-      "command": "uv run --frozen --no-sync --project ../clearml-yolo python ../clearml-yolo/scripts/check_docs.py --root . README.md AGENTS.md docs/migration.md docs/interfaces.md docs/development.md",
-      "expectation": "All Markdown paths and anchors pass the maintained CY checker",
-      "result": {
-        "status": "passed",
-        "exit_code": 0,
-        "evidence": "docs/evidence/2026-10-23-extraction.md"
-      }
-    },
-    {
       "id": "physical-queue",
       "kind": "behavior",
       "command": "Observe default 2 GiB rejection; real cy-queue train and pipeline under documented isolated real-inventory test ceiling, retaining shared locks/guardians; verify GPU execution and downloaded task/model publication",
