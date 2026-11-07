@@ -81,12 +81,8 @@ def test_each_terminal_outcome_can_be_archived(tmp_path: Path, state: JobState) 
     assert view.archived_job_ids == (job.id,)
 
 
-@pytest.mark.parametrize(
-    "state", ["pending", "starting", "running", "cancelling", "recovery_required"]
-)
-def test_archive_rejects_unfinished_jobs_before_changing_any_target(
-    tmp_path: Path, state: JobState
-) -> None:
+@pytest.mark.parametrize("state", ["pending", "starting", "running", "cancelling", "recovery_required"])
+def test_archive_rejects_unfinished_jobs_before_changing_any_target(tmp_path: Path, state: JobState) -> None:
     store = _store(tmp_path)
     first, second = store.submit((_snapshot(tmp_path), _snapshot(tmp_path)))
     store.update(first.id, "completed")
@@ -130,9 +126,7 @@ def test_corrupt_archive_metadata_fails_closed(tmp_path: Path, damage: str) -> N
         path.symlink_to(path.with_name("missing.json"))
     else:
         data = json.loads(path.read_text(encoding="utf-8"))
-        data["job_id" if damage == "wrong_job" else "archived"] = (
-            "another-job" if damage == "wrong_job" else "true"
-        )
+        data["job_id" if damage == "wrong_job" else "archived"] = "another-job" if damage == "wrong_job" else "true"
         path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises((RuntimeError, PermissionError), match=r"corrupt|identity|ownership"):
         store.view()
@@ -195,9 +189,7 @@ def test_readable_references_resolve_existing_ids_and_reject_ambiguity(tmp_path:
         with pytest.raises(ValueError, match=r"missing|reference"):
             resolve_job_reference((first, second), reference)
     with pytest.raises(ValueError, match="ambiguous"):
-        resolve_job_reference(
-            (first, second.model_copy(update={"submission_sequence": 1})), "job-1"
-        )
+        resolve_job_reference((first, second.model_copy(update={"submission_sequence": 1})), "job-1")
     service = _service(store, tmp_path)
     assert service.cancel("job-2").id == second.id
     with pytest.raises(ValueError, match="requiring recovery"):

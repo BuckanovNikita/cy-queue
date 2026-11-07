@@ -129,23 +129,17 @@ class _Actor:
         self.settings = load_queue_settings()
         assert self.settings.config_path == root / "queue.toml"
         assert self.settings.name == "Multi-user acceptance"
-        bind_coordination_root(
-            _HOST, self.settings.coordination_root, bootstrap_root=root / "bootstrap"
-        )
+        bind_coordination_root(_HOST, self.settings.coordination_root, bootstrap_root=root / "bootstrap")
         self.identity = WorkerIdentity(
             owner_uid=os.geteuid(),
             host_id=_HOST,
             boot_id=Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip(),
         )
-        self.store = NFSQueueStore(
-            self.settings.root, self.identity, local_root=self.settings.coordination_root
-        )
+        self.store = NFSQueueStore(self.settings.root, self.identity, local_root=self.settings.coordination_root)
         self.processes = QueueProcesses(self.store, self.identity, command_builder=self._command)
         self.service = QueueService(self.store, _Inventory(), self.processes, self.identity)
 
-    def _command(
-        self, snapshot: JobSnapshot, _path: Path, _devices: tuple[str, ...]
-    ) -> Sequence[str]:
+    def _command(self, snapshot: JobSnapshot, _path: Path, _devices: tuple[str, ...]) -> Sequence[str]:
         return (snapshot.interpreter, "-c", _WORKLOAD, str(self.control / "workload.lock"))
 
     def _snapshot(self, label: str) -> JobSnapshot:
@@ -187,9 +181,7 @@ class _Actor:
         self._gate("submit")
         numbers = []
         for number in range(1, _JOBS_PER_USER + 1):
-            job = self.store.submit((self._snapshot(f"Owner {self.account.label} job {number}"),))[
-                0
-            ]
+            job = self.store.submit((self._snapshot(f"Owner {self.account.label} job {number}"),))[0]
             numbers.append(job.submission_sequence)
         return {"sequences": numbers}
 
@@ -217,9 +209,7 @@ class _Actor:
 
     def reorder(self) -> dict[str, object]:
         foreign = self._first(other=True)
-        view = self.service.move(
-            f"job-{foreign.submission_sequence}", "top", self.store.view().revision
-        )
+        view = self.service.move(f"job-{foreign.submission_sequence}", "top", self.store.view().revision)
         assert view.jobs[0].id == foreign.id
         return {"foreign_pending_reorder": "allowed"}
 
@@ -272,9 +262,7 @@ class _Actor:
                 self.service.tick()
                 current = self._job(job.label)
                 if current.state in {"failed", "recovery_required"}:
-                    raise AssertionError(
-                        f"Controlled workload ended as {current.state}: {current.error}"
-                    )
+                    raise AssertionError(f"Controlled workload ended as {current.state}: {current.error}")
                 return current.state == "completed"
 
             _wait_until(finished, "Controlled owner workload did not complete")
@@ -284,10 +272,7 @@ class _Actor:
         )
         assert payload.local_root == str(self.settings.coordination_root)
         assert payload.identity.owner_uid == self.account.uid
-        assert (
-            json.loads((self.project / "workload-owner.json").read_text())["uid"]
-            == self.account.uid
-        )
+        assert json.loads((self.project / "workload-owner.json").read_text())["uid"] == self.account.uid
         assert (
             self.project / ".cy" / "queue-logs" / f"{job.id}.log"
         ).read_text().strip() == "Controlled workload complete"
@@ -300,9 +285,7 @@ class _Actor:
             own_path = self.project / ".cy" / folder / f"{own.id}.{extension}"
             assert own_path.is_file()
             assert stat.S_IMODE(own_path.stat().st_mode) == 0o600
-            foreign_path = (
-                Path(self.other.home) / "project" / ".cy" / folder / f"{foreign.id}.{extension}"
-            )
+            foreign_path = Path(self.other.home) / "project" / ".cy" / folder / f"{foreign.id}.{extension}"
             _denied(foreign_path.read_bytes)
             _denied(partial(foreign_path.open, "ab"))
         assert self._job(own.label).progress == "Controlled workload complete"
@@ -441,9 +424,7 @@ class _Fixture:
                 ]
             )
             entry = pwd.getpwnam(name)
-            account = _Account(
-                name=name, label=label, uid=entry.pw_uid, gid=entry.pw_gid, home=str(home)
-            )
+            account = _Account(name=name, label=label, uid=entry.pw_uid, gid=entry.pw_gid, home=str(home))
             self.accounts.append(account)
             self._ledger()
             for directory in (home, home / "project"):
@@ -519,9 +500,7 @@ class _Fixture:
 
     def ready(self, stage: str, labels: Sequence[str]) -> None:
         _wait_until(
-            lambda: all(
-                (self.root / "control" / f"{stage}-{label}.ready").exists() for label in labels
-            ),
+            lambda: all((self.root / "control" / f"{stage}-{label}.ready").exists() for label in labels),
             f"Actors did not reach {stage}",
         )
 
@@ -576,10 +555,7 @@ def _signal_uid(uid: int, signum: signal.Signals) -> None:
 def _exercise(fixture: _Fixture, checks: list[str]) -> None:
     first, second = fixture.actor("A", "inspect"), fixture.actor("B", "inspect")
     assert first == second
-    checks.append(
-        "Both real Unix users loaded the same group-readable configuration "
-        "and shared roots under umask 077."
-    )
+    checks.append("Both real Unix users loaded the same group-readable configuration and shared roots under umask 077.")
     workers = [fixture.start(label, "submit") for label in ("A", "B")]
     fixture.ready("submit", ("A", "B"))
     fixture.release("submit")
@@ -593,8 +569,7 @@ def _exercise(fixture: _Fixture, checks: list[str]) -> None:
     assert sorted(numbers) == list(range(1, 2 * _JOBS_PER_USER + 1))
     assert fixture.actor("A", "inspect") == fixture.actor("B", "inspect")
     checks.append(
-        "Concurrent submissions committed twelve unique stable job numbers; "
-        "both users read identical shared history."
+        "Concurrent submissions committed twelve unique stable job numbers; both users read identical shared history."
     )
     for label in ("A", "B"):
         fixture.actor(label, "permissions")
@@ -632,8 +607,7 @@ def _exercise(fixture: _Fixture, checks: list[str]) -> None:
     fixture.release("reservation")
     fixture.finish(reservation)
     checks.append(
-        "A real advisory GPU reservation held by one user excluded the other user "
-        "through a second metadata root."
+        "A real advisory GPU reservation held by one user excluded the other user through a second metadata root."
     )
     for label in ("A", "B"):
         fixture.actor(label, "prepare-worker")
@@ -697,10 +671,7 @@ def _controller(evidence: Path) -> int:
         "",
         f"Result: {'FAILED' if failures else 'PASSED'}",
         "",
-        (
-            "Command: `python tests/queue_multiuser_harness.py --run --evidence <this-file>` "
-            "(root controller)."
-        ),
+        ("Command: `python tests/queue_multiuser_harness.py --run --evidence <this-file>` (root controller)."),
         "",
         "## Executed checks",
         "",
@@ -735,9 +706,7 @@ def _controller(evidence: Path) -> int:
     evidence = evidence.resolve()
     evidence.parent.mkdir(parents=True, exist_ok=True)
     previous_evidence = evidence.read_text(encoding="utf-8") if evidence.exists() else ""
-    evidence.write_text(
-        previous_evidence + ("\n---\n\n" if previous_evidence else "") + body, encoding="utf-8"
-    )
+    evidence.write_text(previous_evidence + ("\n---\n\n" if previous_evidence else "") + body, encoding="utf-8")
     owner = evidence.parent.stat()
     os.chown(evidence, owner.st_uid, owner.st_gid)
     outcome = "FAILED" if failures else "PASSED"
@@ -752,12 +721,8 @@ def main() -> int:
         action="store_true",
         help="Provision two temporary users, verify and clean up; requires root",
     )
-    parser.add_argument(
-        "--evidence", type=Path, help="Markdown evidence destination, required with --run"
-    )
-    parser.add_argument(
-        "--actor", nargs=3, metavar=("ROOT", "OWNER", "ACTION"), help=argparse.SUPPRESS
-    )
+    parser.add_argument("--evidence", type=Path, help="Markdown evidence destination, required with --run")
+    parser.add_argument("--actor", nargs=3, metavar=("ROOT", "OWNER", "ACTION"), help=argparse.SUPPRESS)
     arguments = parser.parse_args()
     if arguments.actor:
         root, label, action = arguments.actor

@@ -90,9 +90,7 @@ def _owned(path: Path, uid: int, *, private: bool = False) -> None:
     if private and stat.S_IMODE(status.st_mode) & 0o077:
         raise PermissionError(f"Private queue record permissions are too broad: {path.name}")
     if not private and stat.S_IMODE(status.st_mode) & 0o022:
-        raise PermissionError(
-            f"Owner-authored queue record is writable by another user: {path.name}"
-        )
+        raise PermissionError(f"Owner-authored queue record is writable by another user: {path.name}")
 
 
 def _read(path: Path, uid: int, *, private: bool = False) -> str:
@@ -103,9 +101,7 @@ def _read(path: Path, uid: int, *, private: bool = False) -> str:
 class NFSQueueStore:
     """Effects stay here; public reads never load another owner's configuration."""
 
-    def __init__(
-        self, root: Path, identity: WorkerIdentity, *, local_root: Path | None = None
-    ) -> None:
+    def __init__(self, root: Path, identity: WorkerIdentity, *, local_root: Path | None = None) -> None:
         if os.name != "posix" or not hasattr(os, "geteuid"):
             raise RuntimeError("Shared cy-queue requires Linux native file coordination")
         if identity.owner_uid != os.geteuid():
@@ -204,15 +200,9 @@ class NFSQueueStore:
                     if event.owner_uid != uid or event.host_id != host_id:
                         raise RuntimeError("Shared queue ordering event identity mismatch")
                     events.append(event)
-            archives = {
-                job.id: archive
-                for job in jobs
-                if (archive := self._archive_record(job)) is not None
-            }
+            archives = {job.id: archive for job in jobs if (archive := self._archive_record(job)) is not None}
         except (ValueError, TypeError, ValidationError, UnicodeError) as error:
-            raise RuntimeError(
-                f"Shared queue committed record is corrupt: {type(error).__name__}"
-            ) from error
+            raise RuntimeError(f"Shared queue committed record is corrupt: {type(error).__name__}") from error
         if len({job.id for job in jobs}) != len(jobs):
             raise RuntimeError("Shared queue contains duplicate committed job IDs")
         jobs.sort(key=lambda job: job.submission_sequence)
@@ -233,9 +223,7 @@ class NFSQueueStore:
             host_id=host_id,
             revision=revision,
             jobs=tuple(jobs),
-            archived_job_ids=tuple(
-                job.id for job in jobs if job.id in archives and archives[job.id].archived
-            ),
+            archived_job_ids=tuple(job.id for job in jobs if job.id in archives and archives[job.id].archived),
         )
 
     def _archive_path(self, job: PublicJob) -> Path:
@@ -257,11 +245,7 @@ class NFSQueueStore:
         except FileNotFoundError:
             return None
         archive = ArchiveRecord.model_validate_json(_read(path, job.owner_uid))
-        if (
-            archive.job_id != job.id
-            or archive.owner_uid != job.owner_uid
-            or archive.host_id != job.host_id
-        ):
+        if archive.job_id != job.id or archive.owner_uid != job.owner_uid or archive.host_id != job.host_id:
             raise RuntimeError("Shared queue archive identity mismatch")
         return archive
 
@@ -270,9 +254,7 @@ class NFSQueueStore:
         with self.transaction():
             view = self._view(self.identity.host_id)
             jobs = {
-                job.id: job
-                for identifier in identifiers
-                for job in (resolve_job_reference(view.jobs, identifier),)
+                job.id: job for identifier in identifiers for job in (resolve_job_reference(view.jobs, identifier),)
             }
             for job in jobs.values():
                 self._require_owner(job)
@@ -314,10 +296,7 @@ class NFSQueueStore:
                 raise ValueError("Submission requires an existing absolute project root")
             if not Path(snapshot.cwd).is_absolute() or not Path(snapshot.cwd).is_dir():
                 raise ValueError("Submission requires an existing absolute working directory")
-            if (
-                not Path(snapshot.interpreter).is_absolute()
-                or not Path(snapshot.interpreter).is_file()
-            ):
+            if not Path(snapshot.interpreter).is_absolute() or not Path(snapshot.interpreter).is_file():
                 raise ValueError("Submission requires an existing absolute interpreter")
             validated.append(
                 snapshot.model_copy(
@@ -392,18 +371,12 @@ class NFSQueueStore:
             except (OSError, ValueError) as error:
                 raise PrivateSnapshotError("Private queue snapshot is unreadable") from error
             if hashlib.sha256(payload.encode()).hexdigest() != job.snapshot_hash:
-                raise PrivateSnapshotError(
-                    "Private queue snapshot hash mismatch; execution refused"
-                )
+                raise PrivateSnapshotError("Private queue snapshot hash mismatch; execution refused")
             try:
                 snapshot = JobSnapshot.model_validate_json(payload)
             except ValidationError as error:
                 raise PrivateSnapshotError("Private queue snapshot is corrupt") from error
-            if (
-                snapshot.id != job.id
-                or snapshot.owner_uid != job.owner_uid
-                or snapshot.host_id != job.host_id
-            ):
+            if snapshot.id != job.id or snapshot.owner_uid != job.owner_uid or snapshot.host_id != job.host_id:
                 raise PrivateSnapshotError("Private queue snapshot identity mismatch")
             return snapshot
 
@@ -548,10 +521,7 @@ class NFSQueueStore:
     ) -> bool:
         """Commit one immutable launch payload while claiming the pending transition."""
         with self.transaction():
-            if (
-                expected_revision is not None
-                and self._view(self.identity.host_id).revision != expected_revision
-            ):
+            if expected_revision is not None and self._view(self.identity.host_id).revision != expected_revision:
                 return False
             job = self._find(identifier)
             self._require_owner(job)
@@ -577,16 +547,12 @@ class NFSQueueStore:
             if job.state in {"completed", "failed", "cancelled"}:
                 return job
             if job.state == "recovery_required":
-                atomic_write(
-                    self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600
-                )
+                atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
                 return job
             state: JobState = "cancelled" if job.state == "pending" else "cancelling"
             result = job.model_copy(update={"state": state, "revision": job.revision + 1})
             atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
-            atomic_write(
-                self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json()
-            )
+            atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
             return result
 
     def cancelled(self, identifier: str) -> bool:
@@ -598,16 +564,10 @@ class NFSQueueStore:
                 job = self._find(identifier)
                 self._require_owner(job)
                 if job.state == "pending" and job.waiting_reason != reason:
-                    result = job.model_copy(
-                        update={"waiting_reason": reason, "revision": job.revision + 1}
-                    )
-                    atomic_write(
-                        self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json()
-                    )
+                    result = job.model_copy(update={"waiting_reason": reason, "revision": job.revision + 1})
+                    atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
 
-    def publish_status(
-        self, identifier: str, *, progress: str | float | None, clearml_url: str | None
-    ) -> None:
+    def publish_status(self, identifier: str, *, progress: str | float | None, clearml_url: str | None) -> None:
         with self.transaction():
             job = self._find(identifier)
             self._require_owner(job)
@@ -620,9 +580,7 @@ class NFSQueueStore:
                         "revision": job.revision + 1,
                     }
                 )
-                atomic_write(
-                    self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json()
-                )
+                atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
 
     def finish_recovery(self, identifier: str, release_verified: Callable[[], None]) -> PublicJob:
         """Readers observe terminal status only after the verified local release commits."""
@@ -633,13 +591,9 @@ class NFSQueueStore:
                 update={
                     "state": "cancelled",
                     "revision": job.revision + 1,
-                    "error": (
-                        "Owner recovered abandoned execution after verified descendant cleanup"
-                    ),
+                    "error": ("Owner recovered abandoned execution after verified descendant cleanup"),
                 }
             )
-            atomic_write(
-                self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json()
-            )
+            atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
             release_verified()
             return result

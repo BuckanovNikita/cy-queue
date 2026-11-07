@@ -125,9 +125,7 @@ def _arguments(arguments: Sequence[str], command: Command) -> tuple[argparse.Nam
     for value in overrides:
         key = value.split("=", 1)[0].lstrip("+~")
         if key.split(".", 1)[0] in {"queue", "autogpu", "auto_gpu"} or key == "hydra/launcher":
-            raise ValueError(
-                "Legacy queue/autogpu controls are removed; use cy-queue allocation options"
-            )
+            raise ValueError("Legacy queue/autogpu controls are removed; use cy-queue allocation options")
     return options, overrides
 
 
@@ -189,9 +187,7 @@ def _resolved(
             config.hydra.job.num = index
             config.hydra.job.id = str(index)
             # Every queued job has its own Hydra output even when submitted in one sweep.
-            raw_run = OmegaConf.to_container(
-                config.hydra.sweep if multirun else config.hydra.run, resolve=False
-            )
+            raw_run = OmegaConf.to_container(config.hydra.sweep if multirun else config.hydra.run, resolve=False)
             if "cy_run_token" in str(raw_run):
                 config.hydra.run.dir = str(project_root / "outputs" / f"queue-{uuid4().hex}")
             elif multirun:
@@ -255,9 +251,7 @@ def compose_snapshots(
         reject_saved_legacy_controls(Path(options.config_dir).resolve(), options.config_name)
     store.add_to_hydra_store(overwrite_ok=True)
     context = (
-        initialize_config_dir(
-            config_dir=str(Path(options.config_dir).resolve()), version_base="1.3"
-        )
+        initialize_config_dir(config_dir=str(Path(options.config_dir).resolve()), version_base="1.3")
         if options.config_dir
         else initialize(config_path=None, version_base="1.3")
     )
@@ -277,15 +271,11 @@ def compose_snapshots(
                 command=command,
             )
             clearml_values = values.get("clearml")
-            task_name = (
-                clearml_values.get("task_name") if isinstance(clearml_values, dict) else None
-            )
+            task_name = clearml_values.get("task_name") if isinstance(clearml_values, dict) else None
             snapshots.append(
                 JobSnapshot(
                     command=command,
-                    label=task_name
-                    if isinstance(task_name, str) and task_name
-                    else command.title(),
+                    label=task_name if isinstance(task_name, str) and task_name else command.title(),
                     config_json=json.dumps(values, allow_nan=False),
                     project_root=str(project_root.resolve()),
                     cwd=str(Path.cwd()),

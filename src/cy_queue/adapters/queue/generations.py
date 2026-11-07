@@ -30,11 +30,7 @@ def generation_events(root: Path) -> tuple[GPUFreeResult, ...]:
         except ValidationError as error:
             raise RuntimeError("GPU generation record is corrupt") from error
         prefix = f"generation-{device_key(event.uuid)}-{event.generation}-"
-        if (
-            status.st_uid != event.actor_uid
-            or stat.S_IMODE(status.st_mode) & 0o022
-            or not path.name.startswith(prefix)
-        ):
+        if status.st_uid != event.actor_uid or stat.S_IMODE(status.st_mode) & 0o022 or not path.name.startswith(prefix):
             raise PermissionError("GPU generation ownership or identity differs from its record")
         events.append(event)
     return tuple(events)

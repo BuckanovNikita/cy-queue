@@ -19,9 +19,7 @@ def current_identity() -> WorkerIdentity:
     boot = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
     if not machine or not boot:
         raise RuntimeError("Stable host and boot identities are unavailable")
-    return WorkerIdentity(
-        owner_uid=os.geteuid(), host_id=hashlib.sha256(machine.encode()).hexdigest(), boot_id=boot
-    )
+    return WorkerIdentity(owner_uid=os.geteuid(), host_id=hashlib.sha256(machine.encode()).hexdigest(), boot_id=boot)
 
 
 def process_birth(pid: int) -> int | None:

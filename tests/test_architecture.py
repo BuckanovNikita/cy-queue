@@ -82,8 +82,7 @@ def _errors(module: str, dependencies: set[str]) -> list[str]:
         if dependency.startswith("cy_queue."):
             target = dependency.split(".")[1]
             worker_target = (
-                module == "cy_queue.adapters.queue.runtime"
-                and dependency == "cy_queue.entrypoints.queue_run"
+                module == "cy_queue.adapters.queue.runtime" and dependency == "cy_queue.entrypoints.queue_run"
             )
             if target in _LAYERS and _LAYERS[target] > _LAYERS[layer] and not worker_target:
                 errors.append(f"Outward dependency: {module} -> {dependency}")
@@ -112,8 +111,7 @@ def test_all_modules_respect_layers_sdk_ownership_and_cy_interfaces() -> None:
         source = path.read_text()
         if path.name == "__init__.py":
             assert all(
-                isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
-                for node in ast.parse(source).body
+                isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) for node in ast.parse(source).body
             ), f"Package initializer must be inert: {path}"
             continue
         module = "cy_queue." + ".".join(path.relative_to(_ROOT).with_suffix("").parts)
@@ -141,10 +139,7 @@ def test_prohibited_dependencies_fail(module: str, dependency: str) -> None:
     "source",
     [
         "import cy_queue.adapters.queue.storage",
-        (
-            "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n"
-            " import cy_queue.adapters.queue.storage"
-        ),
+        ("from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n import cy_queue.adapters.queue.storage"),
         "import importlib\nimportlib.import_module('cy_queue.adapters.queue.storage')",
         "argv = ['python', '-m', 'cy_queue.adapters.queue.storage']",
     ],

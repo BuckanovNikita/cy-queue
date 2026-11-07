@@ -15,38 +15,26 @@ from cy_queue.entrypoints.queue import _parser
 
 
 def test_supported_cy_range_includes_saved_estimate_listing_minor() -> None:
-    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
-        "project"
-    ]
+    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
     requirement = next(
-        parsed
-        for value in queue["dependencies"]
-        if (parsed := Requirement(value)).name == "clearml-yolo"
+        parsed for value in queue["dependencies"] if (parsed := Requirement(value)).name == "clearml-yolo"
     )
     assert requirement.specifier.contains("0.45.0")
 
 
 def test_supported_cy_range_includes_forced_estimation_minor() -> None:
-    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
-        "project"
-    ]
+    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
     requirement = next(
-        parsed
-        for value in queue["dependencies"]
-        if (parsed := Requirement(value)).name == "clearml-yolo"
+        parsed for value in queue["dependencies"] if (parsed := Requirement(value)).name == "clearml-yolo"
     )
     assert requirement.specifier.contains("0.46.0")
     assert not requirement.specifier.contains("0.47.0")
 
 
 def test_current_source_and_installed_versions_are_compatible() -> None:
-    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())[
-        "project"
-    ]
+    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
     requirement = next(
-        parsed
-        for value in queue["dependencies"]
-        if (parsed := Requirement(value)).name == "clearml-yolo"
+        parsed for value in queue["dependencies"] if (parsed := Requirement(value)).name == "clearml-yolo"
     )
     installed_cy = version("clearml-yolo")
     assert requirement.specifier.contains(installed_cy), str(requirement)
@@ -78,9 +66,7 @@ def test_submission_selects_standalone_train_and_keeps_pipeline_default(tmp_path
     assert _parser().parse_args(["submit", "--command", "train", "--gpus", "1"]).command == "train"
 
 
-@pytest.mark.parametrize(
-    "override", ["dataset_format=invalid", "required_splits=5", "ultralytics.device=2"]
-)
+@pytest.mark.parametrize("override", ["dataset_format=invalid", "required_splits=5", "ultralytics.device=2"])
 def test_invalid_train_sweep_fails_before_submission(tmp_path: Path, override: str) -> None:
     with pytest.raises((ValueError, TypeError)):
         compose_snapshots(
@@ -91,9 +77,7 @@ def test_invalid_train_sweep_fails_before_submission(tmp_path: Path, override: s
         )
 
 
-def test_snapshot_identity_covers_both_distribution_versions(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_snapshot_identity_covers_both_distribution_versions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from cy_queue.entrypoints.hydra import queue_config
 
     baseline = queue_config.package_identity()
@@ -277,9 +261,7 @@ def test_submit_custom_train_yaml_omitting_optional_fields_without_native_effect
         config_dir / "custom.yaml",
     )
     command = queue_command(tmp_path)
-    command[2] += (
-        "\nimport sys\nassert not {'torch', 'ultralytics', 'clearml'}.intersection(sys.modules)\n"
-    )
+    command[2] += "\nimport sys\nassert not {'torch', 'ultralytics', 'clearml'}.intersection(sys.modules)\n"
     completed = subprocess.run(  # noqa: S603 - isolated actual queue CLI with controlled NVML
         [
             *command,

@@ -67,9 +67,7 @@ def test_submission_resolves_whole_sweep_and_freezes_settings(tmp_path: Path) ->
     assert [json.loads(item.config_json)["ultralytics"]["epochs"] for item in snapshots] == [1, 2]
     assert all(item.request.count == 2 for item in snapshots)
     assert all(item.cwd == str(Path.cwd()) for item in snapshots)
-    assert all(
-        json.loads(item.config_json)["ultralytics"]["compile"] is False for item in snapshots
-    )
+    assert all(json.loads(item.config_json)["ultralytics"]["compile"] is False for item in snapshots)
 
 
 @pytest.mark.parametrize("override", ["ultralytics.device=0", "ultralytics_predict.device=[1,2]"])
@@ -78,18 +76,14 @@ def test_queue_rejects_conflicting_native_gpu_overrides(tmp_path: Path, override
     from cy_queue.entrypoints.hydra.queue_config import compose_snapshots
 
     with pytest.raises(ValueError, match=r"cy-queue.*--devices|allocation"):
-        compose_snapshots(
-            ["ground_truth=input.csv", override], ResourceRequest(gpus=1), project_root=tmp_path
-        )
+        compose_snapshots(["ground_truth=input.csv", override], ResourceRequest(gpus=1), project_root=tmp_path)
 
 
 def test_snapshot_rejects_execution_after_package_identity_change(tmp_path: Path) -> None:
     from cy_queue.core.queue import ResourceRequest
     from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, validate_snapshot
 
-    snapshot = compose_snapshots(
-        ["ground_truth=input.csv"], ResourceRequest(gpus=1), project_root=tmp_path
-    )[0]
+    snapshot = compose_snapshots(["ground_truth=input.csv"], ResourceRequest(gpus=1), project_root=tmp_path)[0]
     with pytest.raises(ValueError, match="identity"):
         validate_snapshot(snapshot.model_copy(update={"package_identity": "old-code"}))
 
@@ -102,9 +96,7 @@ def test_snapshot_rejects_execution_after_package_identity_change(tmp_path: Path
         "+hydra.job.env_set.CUDA_VISIBLE_DEVICES=2",
     ],
 )
-def test_submission_rejects_escaping_paths_and_environment_allocation_override(
-    tmp_path: Path, override: str
-) -> None:
+def test_submission_rejects_escaping_paths_and_environment_allocation_override(tmp_path: Path, override: str) -> None:
     from cy_queue.core.queue import ResourceRequest
     from cy_queue.entrypoints.hydra.queue_config import compose_snapshots
 
@@ -301,10 +293,7 @@ def test_tui_moves_and_cancels_real_pending_jobs(tmp_path: Path) -> None:
             await pilot.press("d")
             assert service.list().jobs[0].id == jobs[1].id
             await pilot.press("c")
-            assert (
-                next(job for job in service.list().jobs if job.id == jobs[0].id).state
-                == "cancelled"
-            )
+            assert next(job for job in service.list().jobs if job.id == jobs[0].id).state == "cancelled"
             await pilot.press("x")
             assert jobs[0].id not in {job.id for job in service.list().jobs}
             await pilot.press("v")

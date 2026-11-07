@@ -173,9 +173,7 @@ def test_recovery_reuses_persisted_birth_and_never_signals_replacement_pid(
 ) -> None:
     from clearml_yolo.adapters.runtime.process_tree import LinuxProcessTree, _read_process
 
-    child = subprocess.Popen(
-        [sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True
-    )
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True)
     try:
         current = _read_process(child.pid)
         assert current is not None
@@ -265,9 +263,7 @@ def test_guardian_death_preserves_process_recovery_without_reserving_capacity(
     try:
         assert processes.start(job, ("GPU-test",))
         rank_pid = int(_wait_for(ready))
-        claim = json.loads(
-            (store.snapshot_path(job.id).parent / "claim.json").read_text(encoding="utf-8")
-        )
+        claim = json.loads((store.snapshot_path(job.id).parent / "claim.json").read_text(encoding="utf-8"))
         guardian_pid = claim["guardian_pid"]
         os.kill(guardian_pid, signal.SIGKILL)
         deadline = time.monotonic() + 5

@@ -109,8 +109,7 @@ def bind_coordination_root(host_id: str, root: Path, *, bootstrap_root: Path | N
         ):
             harmless = {"coordination-binding.lock", "nfs-transaction.lock", "gpu-transaction.lock"}
             if selected != bootstrap and any(
-                item.name not in harmless and not item.name.startswith("namespace-")
-                for item in directory.iterdir()
+                item.name not in harmless and not item.name.startswith("namespace-") for item in directory.iterdir()
             ):
                 raise RuntimeError(
                     "Existing host coordination evidence requires maintenance before relocation; "
@@ -182,9 +181,7 @@ def shared_descriptor(path: Path) -> int:
 
 
 @contextmanager
-def host_transaction(
-    host_id: str, *, name: str = "nfs-transaction.lock", root: Path | None = None
-) -> Iterator[None]:
+def host_transaction(host_id: str, *, name: str = "nfs-transaction.lock", root: Path | None = None) -> Iterator[None]:
     descriptor = shared_descriptor(host_directory(host_id, root) / name)
     deadline = time.monotonic() + 10
     acquired = False

@@ -108,9 +108,7 @@ def test_execution_devices_rejects_invalid_counts(count: object) -> None:
     ("device", "expected"),
     [([0, 1], 2), ("0,1", 2), (2, 1), ([-1, -1], 2), ("cpu", 0)],
 )
-def test_training_job_request_uses_the_native_training_device(
-    device: object, expected: int
-) -> None:
+def test_training_job_request_uses_the_native_training_device(device: object, expected: int) -> None:
     assert job_request("train", {"ultralytics": {"device": device}}) == expected
 
 
@@ -119,9 +117,7 @@ def test_training_job_request_uses_the_native_training_device(
     ("device", "expected"),
     [([0, 1, 2], 1), ("0,1", 1), (None, 1), ("cpu", 0), ("mps", 0)],
 )
-def test_inference_job_request_uses_at_most_one_gpu(
-    command: str, device: object, expected: int
-) -> None:
+def test_inference_job_request_uses_at_most_one_gpu(command: str, device: object, expected: int) -> None:
     config = {"ultralytics_predict": {"device": device}}
     assert job_request(command, config) == expected
 
@@ -179,9 +175,7 @@ def test_inference_job_request_uses_at_most_one_gpu(
         ),
     ],
 )
-def test_pipeline_job_request_follows_the_enabled_gpu_stage(
-    config: dict[str, Any], expected: int
-) -> None:
+def test_pipeline_job_request_follows_the_enabled_gpu_stage(config: dict[str, Any], expected: int) -> None:
     assert job_request("pipeline", config) == expected
 
 
@@ -189,9 +183,7 @@ def test_pipeline_job_request_follows_the_enabled_gpu_stage(
     ("device", "expected"),
     [([0, 1], 1), ("0,1", 1), ("cpu", 0), ("mps", 0)],
 )
-def test_standalone_compare_reads_the_native_prediction_device(
-    device: object, expected: int
-) -> None:
+def test_standalone_compare_reads_the_native_prediction_device(device: object, expected: int) -> None:
     config = {
         "inference": {"device": "cpu"},
         "ultralytics_predict": {"device": device},
@@ -302,9 +294,7 @@ def test_snapshot_accepts_reported_eight_card_memory_usage(
     _install_nvml(monkeypatch, fake)
     assert GPUInventory().snapshot() == tuple(
         GPUDevice(uuid, False, index, used_memory_bytes=value * 1024**2)
-        for index, (uuid, value) in enumerate(
-            zip(uuids, (1215, 3, 409, 3, 3, 3, 3, 3), strict=True)
-        )
+        for index, (uuid, value) in enumerate(zip(uuids, (1215, 3, 409, 3, 3, 3, 3, 3), strict=True))
     )
     from cy_queue.adapters.queue.inventory import QueueGPUInventory
     from cy_queue.adapters.runtime import gpu_resources
@@ -313,9 +303,7 @@ def test_snapshot_accepts_reported_eight_card_memory_usage(
     # cards with retained allocations from the user's report.
     monkeypatch.setattr(gpu_resources, "_probe_visible_uuids", lambda: uuids[:3])
     observations = QueueGPUInventory().snapshot()
-    assert [(card.uuid, card.available) for card in observations] == [
-        (uuid, True) for uuid in uuids[:3]
-    ]
+    assert [(card.uuid, card.available) for card in observations] == [(uuid, True) for uuid in uuids[:3]]
 
 
 def test_snapshot_applies_custom_fractional_limit(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -396,9 +384,7 @@ def test_snapshot_reports_unsupported_memory_telemetry(monkeypatch: pytest.Monke
 
 
 @pytest.mark.parametrize("used", [None, "unknown", -1, True, 0.5])
-def test_snapshot_rejects_invalid_memory_telemetry(
-    monkeypatch: pytest.MonkeyPatch, used: object
-) -> None:
+def test_snapshot_rejects_invalid_memory_telemetry(monkeypatch: pytest.MonkeyPatch, used: object) -> None:
     fake = _FakeNVML(uuids=("GPU-a",), used_memory=(used,))
     _install_nvml(monkeypatch, fake)
     with pytest.raises(RuntimeError, match=r"GPU 0.*memory telemetry"):
@@ -416,9 +402,7 @@ def test_snapshot_accepts_hardware_without_mig_capability(
     )
     _install_nvml(monkeypatch, fake)
 
-    assert GPUInventory().snapshot() == (
-        GPUDevice(uuid="GPU-a", busy=False, physical_index=0, used_memory_bytes=0),
-    )
+    assert GPUInventory().snapshot() == (GPUDevice(uuid="GPU-a", busy=False, physical_index=0, used_memory_bytes=0),)
 
 
 def test_snapshot_rejects_mig_enabled_hardware_clearly(
@@ -491,9 +475,7 @@ def test_visible_preserves_cuda_logical_order_independently_of_current_occupancy
 
 
 def test_visible_rejects_mig_uuid_from_cuda_probe(monkeypatch: pytest.MonkeyPatch) -> None:
-    completed = subprocess.CompletedProcess(
-        args=[], returncode=0, stdout=json.dumps(["MIG-instance"]), stderr=""
-    )
+    completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=json.dumps(["MIG-instance"]), stderr="")
     monkeypatch.setattr(subprocess, "run", lambda *_a, **_kw: completed)
 
     with pytest.raises(RuntimeError, match="MIG"):
@@ -501,9 +483,7 @@ def test_visible_rejects_mig_uuid_from_cuda_probe(monkeypatch: pytest.MonkeyPatc
 
 
 def test_visible_reports_probe_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    completed = subprocess.CompletedProcess(
-        args=[], returncode=3, stdout="", stderr="CUDA initialization failed"
-    )
+    completed = subprocess.CompletedProcess(args=[], returncode=3, stdout="", stderr="CUDA initialization failed")
     monkeypatch.setattr(subprocess, "run", lambda *_a, **_kw: completed)
 
     with pytest.raises(RuntimeError, match="CUDA initialization failed"):
@@ -559,9 +539,7 @@ def test_visibility_probe_failure_reports_exit_and_redacts_subprocess_stderr(
 
 
 @pytest.mark.parametrize("failure", ["unsupported", "mig", "invalid", "unexpected"])
-def test_hidden_telemetry_failure_does_not_block_visible_device(
-    monkeypatch: pytest.MonkeyPatch, failure: str
-) -> None:
+def test_hidden_telemetry_failure_does_not_block_visible_device(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
     from cy_queue.adapters.runtime import gpu_resources
 
     hidden_memory: object = {

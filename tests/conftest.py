@@ -103,16 +103,12 @@ def ddp_gpu_options(request: pytest.FixtureRequest) -> GPUOptions:
         cleanup_timeout=config.getoption("--ddp-cleanup-timeout"),
     )
     missing = [
-        name
-        for name in ("--ddp-devices", "--ddp-clearml-project", "--ddp-artifacts")
-        if not config.getoption(name)
+        name for name in ("--ddp-devices", "--ddp-clearml-project", "--ddp-artifacts") if not config.getoption(name)
     ]
     if not config.getoption("--run-ddp-gpu"):
         missing.insert(0, "--run-ddp-gpu")
     if missing:
         evidence = Evidence(options, "selection-error")
         with evidence.retained():
-            raise ValueError(
-                f"Physical DDP selection requires {' '.join(missing)}; evidence: {evidence.root}"
-            )
+            raise ValueError(f"Physical DDP selection requires {' '.join(missing)}; evidence: {evidence.root}")
     return options

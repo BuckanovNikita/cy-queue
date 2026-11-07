@@ -180,9 +180,7 @@ def test_absent_gpu_short_selector_can_free_without_inventory(control_case: Cont
     assert absent.release(GPU_B).uuid == GPU_B
 
 
-@pytest.mark.parametrize(
-    "selector", ["-1", "+1", "1.0", "0,1", "GPU-111", "MIG-111", " 0 ", "", "3"]
-)
+@pytest.mark.parametrize("selector", ["-1", "+1", "1.0", "0,1", "GPU-111", "MIG-111", " 0 ", "", "3"])
 def test_invalid_selectors_do_not_write_holds(control_case: ControlCase, selector: str) -> None:
     with pytest.raises(ValueError, match=r"selector|index"):
         control_case.controls.disable(selector)
@@ -198,12 +196,10 @@ def test_generation_fence_rejects_old_workers_without_preempting_lease(
     lease = case.pool.acquire_recovery(case.claim)
     try:
         records = [
-            GuardianClaim.model_validate_json(path.read_bytes())
-            for path in case.pool.root.glob("gpu-*.claim.json")
+            GuardianClaim.model_validate_json(path.read_bytes()) for path in case.pool.root.glob("gpu-*.claim.json")
         ]
         assert any(
-            record.compatibility not in {QUEUE_COMPATIBILITY, "shared-cy-queue-gpu-controls-v1"}
-            for record in records
+            record.compatibility not in {QUEUE_COMPATIBILITY, "shared-cy-queue-gpu-controls-v1"} for record in records
         )
         assert case.pool.reserved() == {GPU_A, GPU_B}
         case.controls.release("0")
@@ -221,9 +217,7 @@ def test_worker_supervision_fails_before_registration_or_fence(
     from cy_queue.adapters.queue import runtime
 
     case = control_case
-    processes = runtime.QueueProcesses(
-        case.store, case.pool.identity, local_root=case.pool.local_root
-    )
+    processes = runtime.QueueProcesses(case.store, case.pool.identity, local_root=case.pool.local_root)
 
     fence = (case.pool.root / "gpu-controls.claim.json").read_bytes()
     monkeypatch.delattr(os, "pidfd_open")
@@ -241,9 +235,7 @@ def test_selected_interpreter_supervision_fails_before_prepare_start(
     from cy_queue.adapters.queue import runtime
 
     case = control_case
-    processes = runtime.QueueProcesses(
-        case.store, case.pool.identity, local_root=case.pool.local_root
-    )
+    processes = runtime.QueueProcesses(case.store, case.pool.identity, local_root=case.pool.local_root)
     job = case.store.update(case.claim.job_id, "pending")
 
     def unsupported(interpreter: str) -> None:
@@ -314,9 +306,7 @@ def test_snapshot_interpreter_missing_api_is_probed_in_fresh_process(
             ),
         )
     )[0]
-    processes = runtime.QueueProcesses(
-        case.store, case.pool.identity, local_root=case.pool.local_root
-    )
+    processes = runtime.QueueProcesses(case.store, case.pool.identity, local_root=case.pool.local_root)
     with pytest.raises(RuntimeError, match="pidfd_open"):
         processes.start(job, (GPU_A,))
     assert next(item for item in case.store.view().jobs if item.id == job.id).state == "pending"
@@ -333,9 +323,7 @@ def test_free_invalidates_foreign_hold_without_reading_or_deleting_it(
 
     case = control_case
     foreign_uid = os.geteuid() + 1
-    hold = GPUHold(
-        uuid=GPU_A, owner_uid=foreign_uid, host_id=case.pool.identity.host_id, created_at=0
-    )
+    hold = GPUHold(uuid=GPU_A, owner_uid=foreign_uid, host_id=case.pool.identity.host_id, created_at=0)
     path = case.pool.hold_path(GPU_A, foreign_uid)
     atomic_write(path, hold.model_dump_json())
     before = path.read_bytes()

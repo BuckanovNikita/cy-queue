@@ -18,9 +18,7 @@ class AutoGPUControl(ExecutionControl):
 
     force: StrictBool = False
 
-    max_used_memory_gib: float = Field(
-        default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False
-    )
+    max_used_memory_gib: float = Field(default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False)
 
 
 class ExecutionPhase(BaseModel):

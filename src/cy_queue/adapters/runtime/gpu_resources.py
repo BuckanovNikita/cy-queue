@@ -154,13 +154,9 @@ def _model_paths(config: Mapping[str, Any]) -> tuple[str, str]:
     return "model.train", "model.predict"
 
 
-def _model_phase(
-    config: Mapping[str, Any], kind: Literal["train", "predict"], path: str
-) -> ExecutionPhase:
+def _model_phase(config: Mapping[str, Any], kind: Literal["train", "predict"], path: str) -> ExecutionPhase:
     settings = _settings(config, path)
-    return ExecutionPhase(
-        kind=kind, settings_path=path, device=settings.get("device") if settings else None
-    )
+    return ExecutionPhase(kind=kind, settings_path=path, device=settings.get("device") if settings else None)
 
 
 def _export_phase(config: Mapping[str, Any]) -> ExecutionPhase:
@@ -232,14 +228,11 @@ def _probe_visible_uuids() -> tuple[str, ...]:
             timeout=_CUDA_PROBE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as error:
-        raise RuntimeError(
-            f"CUDA visibility probe timed out after {_CUDA_PROBE_TIMEOUT_SECONDS:g} seconds"
-        ) from error
+        raise RuntimeError(f"CUDA visibility probe timed out after {_CUDA_PROBE_TIMEOUT_SECONDS:g} seconds") from error
     if result.returncode:
         detail = result.stderr.strip() or f"metadata probe exited {result.returncode}"
         raise RuntimeError(
-            f"CUDA visibility probe failed (exit {result.returncode}): "
-            f"{redact_gpu_ids(redact_text(detail))}"
+            f"CUDA visibility probe failed (exit {result.returncode}): {redact_gpu_ids(redact_text(detail))}"
         )
     try:
         loaded = json.loads(result.stdout)
@@ -252,8 +245,7 @@ def _probe_visible_uuids() -> tuple[str, ...]:
             include_message=False,
         )
         raise RuntimeError(
-            "CUDA visibility probe returned invalid JSON: "
-            + exception_summary(error, include_message=False)
+            "CUDA visibility probe returned invalid JSON: " + exception_summary(error, include_message=False)
         ) from None
     if not isinstance(loaded, list) or any(not isinstance(value, str) for value in loaded):
         raise RuntimeError("CUDA visibility probe returned an invalid UUID list")
@@ -272,9 +264,7 @@ class GPUInventory:
     _required_uuids: tuple[str, ...] | None = None
 
     def __init__(self, *, max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB) -> None:
-        self.max_used_memory_gib = AutoGPUControl(
-            max_used_memory_gib=max_used_memory_gib
-        ).max_used_memory_gib
+        self.max_used_memory_gib = AutoGPUControl(max_used_memory_gib=max_used_memory_gib).max_used_memory_gib
 
     def restrict_to(self, required: tuple[str, ...]) -> None:
         """Require telemetry only for exact selected or already reserved UUIDs.
@@ -323,22 +313,15 @@ class GPUInventory:
             except nvml.NVMLError_NotSupported:
                 current_mig_mode = nvml.NVML_DEVICE_MIG_DISABLE
             if current_mig_mode != nvml.NVML_DEVICE_MIG_DISABLE:
-                raise RuntimeError(
-                    f"MIG-enabled {label} is unsupported by GPU availability waiting"
-                )
+                raise RuntimeError(f"MIG-enabled {label} is unsupported by GPU availability waiting")
         try:
             memory = nvml.nvmlDeviceGetMemoryInfo(handle)
         except nvml.NVMLError_NotSupported as error:
-            raise RuntimeError(
-                f"{label} memory telemetry is unsupported; cannot determine availability"
-            ) from error
+            raise RuntimeError(f"{label} memory telemetry is unsupported; cannot determine availability") from error
         # NVML exposes an opaque binding record, rather than a project-owned type.
         used = getattr(memory, "used", None)
         if isinstance(used, bool) or not isinstance(used, int) or used < 0:
-            raise RuntimeError(
-                f"{label} memory telemetry returned invalid used bytes; "
-                "cannot determine availability"
-            )
+            raise RuntimeError(f"{label} memory telemetry returned invalid used bytes; cannot determine availability")
         return used
 
     @trace_operation("gpu.inventory")
@@ -377,8 +360,7 @@ class GPUInventory:
                     # when the device cannot participate in this admission decision.
                     if required is None or uuid in required:
                         raise RuntimeError(
-                            f"GPU {index} telemetry unavailable: "
-                            f"{redact_gpu_ids(exception_summary(error))}"
+                            f"GPU {index} telemetry unavailable: {redact_gpu_ids(exception_summary(error))}"
                         ) from error
                     devices.append(
                         GPUDevice(

@@ -39,9 +39,7 @@ def test_queue_weight_decay_survives_yaml_cli_snapshot_worker_and_training(
     if weight_decay is not None and "," in weight_decay:
         arguments.append("-m")
     snapshots = compose_snapshots(arguments, ResourceRequest(gpus=2), project_root=tmp_path)
-    expected = (
-        [0.02] if weight_decay is None else [float(value) for value in weight_decay.split(",")]
-    )
+    expected = [0.02] if weight_decay is None else [float(value) for value in weight_decay.split(",")]
     assert len(snapshots) == len(expected)
     for index, (snapshot, decay) in enumerate(zip(snapshots, expected, strict=True)):
         _assert_execution(snapshot, decay, tmp_path / f"worker-{index}", monkeypatch)
@@ -67,9 +65,7 @@ def _assert_execution(
         name="owner",
         running_locally=lambda: True,
         get_project_name=lambda: "test",
-        set_configuration_object=lambda **values: documents.update(
-            {values["name"]: json.loads(values["config_text"])}
-        ),
+        set_configuration_object=lambda **values: documents.update({values["name"]: json.loads(values["config_text"])}),
         connect=lambda values, **kwargs: parameters.append(deepcopy(values)),
     )
 
@@ -93,9 +89,7 @@ def _assert_execution(
         prepared = SimpleNamespace(ground_truth=Path("truth.csv"), data=Path("data.yaml"))
         return nullcontext((prepared, args[1]))
 
-    def native_train(
-        owner: object, architecture: str, settings: dict[str, Any], prepared: Any
-    ) -> Any:
+    def native_train(owner: object, architecture: str, settings: dict[str, Any], prepared: Any) -> Any:
         native.append(deepcopy(settings))
         events.append("train")
 

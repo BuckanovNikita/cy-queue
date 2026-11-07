@@ -54,10 +54,7 @@ class ResourceRequest(QueueRecord):
         if self.devices is not None and (
             not self.devices
             or len(set(self.devices)) != len(self.devices)
-            or any(
-                not value.startswith("GPU-") or not value.removeprefix("GPU-")
-                for value in self.devices
-            )
+            or any(not value.startswith("GPU-") or not value.removeprefix("GPU-") for value in self.devices)
         ):
             raise ValueError("Exact GPU UUIDs must be nonempty, unique whole-GPU identities")
         return self
@@ -242,14 +239,8 @@ def earliest_runnable(
     for job in jobs:
         if job.state != "pending" or job.owner_uid not in live_owners:
             continue
-        cards = (
-            owner_observations.get(job.owner_uid, ())
-            if owner_observations is not None
-            else observations
-        )
-        available = tuple(
-            card.uuid for card in cards if card.available and card.uuid not in reserved
-        )
+        cards = owner_observations.get(job.owner_uid, ()) if owner_observations is not None else observations
+        available = tuple(card.uuid for card in cards if card.available and card.uuid not in reserved)
         exact = job.request.devices
         if exact is not None:
             if all(uuid in available for uuid in exact):
@@ -284,9 +275,6 @@ def waiting_reason(
         return (
             "Waiting for GPU capacity: operator holds disable visible devices"
             if held & {card.uuid for card in observations}
-            else (
-                f"Waiting for GPU capacity: {job.request.count} requested, "
-                f"{len(available)} available"
-            )
+            else (f"Waiting for GPU capacity: {job.request.count} requested, {len(available)} available")
         )
     return None

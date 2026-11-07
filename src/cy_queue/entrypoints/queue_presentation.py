@@ -63,14 +63,8 @@ class QueuePresentation:
         return tuple(self.device(uuid, host_id) for uuid in uuids)
 
     def text(self, value: str, host_id: str | None = None) -> str:
-        labels = (
-            self._labels
-            if self._host_id is None or host_id is None or host_id == self._host_id
-            else {}
-        )
-        return human_text(
-            _CLAIM_TOKEN.sub("<redacted>", redact_gpu_ids(redact_text(value), labels))
-        )
+        labels = self._labels if self._host_id is None or host_id is None or host_id == self._host_id else {}
+        return human_text(_CLAIM_TOKEN.sub("<redacted>", redact_gpu_ids(redact_text(value), labels)))
 
     def request(self, request: ResourceRequest, host_id: str | None = None) -> str:
         return ",".join(self.devices(request.devices or (), host_id)) or str(request.count)
@@ -90,9 +84,7 @@ class QueuePresentation:
             "request": {
                 "gpus": job.request.gpus,
                 "devices": (
-                    list(self.devices(job.request.devices, job.host_id))
-                    if job.request.devices is not None
-                    else None
+                    list(self.devices(job.request.devices, job.host_id)) if job.request.devices is not None else None
                 ),
             },
             "submitted_at": job.submitted_at,
@@ -102,14 +94,8 @@ class QueuePresentation:
             "revision": job.revision,
             "devices": list(self.devices(job.devices, job.host_id)),
             "error": self.text(job.error, job.host_id) if job.error else job.error,
-            "waiting_reason": (
-                self.text(job.waiting_reason, job.host_id) if job.waiting_reason else None
-            ),
-            "progress": (
-                self.text(job.progress, job.host_id)
-                if isinstance(job.progress, str)
-                else job.progress
-            ),
+            "waiting_reason": (self.text(job.waiting_reason, job.host_id) if job.waiting_reason else None),
+            "progress": (self.text(job.progress, job.host_id) if isinstance(job.progress, str) else job.progress),
             "clearml_url": redact_text(job.clearml_url) if job.clearml_url else None,
         }
 
@@ -119,9 +105,7 @@ class QueuePresentation:
             "protocol": view.protocol,
             "host_id": view.host_id,
             "revision": view.revision,
-            "jobs": [
-                self.job(job) | {"archived": job.id in view.archived_job_ids} for job in view.jobs
-            ],
+            "jobs": [self.job(job) | {"archived": job.id in view.archived_job_ids} for job in view.jobs],
             "archived_count": len(view.archived_job_ids),
             "warning_count": len(messages),
             "refresh_issues": [
@@ -138,9 +122,7 @@ class QueuePresentation:
     def refresh_messages(self, view: QueueView) -> dict[str, str]:
         """Attach safe transient diagnostics only to jobs in the displayed view."""
         issues = {issue.job_id: issue.message for issue in view.refresh_issues}
-        return {
-            job.id: self.text(issues[job.id], job.host_id) for job in view.jobs if job.id in issues
-        }
+        return {job.id: self.text(issues[job.id], job.host_id) for job in view.jobs if job.id in issues}
 
     def hold(self, hold: GPUHold) -> dict[str, JsonValue]:
         return {

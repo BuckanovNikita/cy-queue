@@ -54,9 +54,7 @@ def test_handoff_retains_first_ordered_gpu_and_releases_others_idempotently(tmp_
         assert lease.pool.claim_for("training") == reduced
         assert lease.pool.reserved() == {"GPU-b"}
         assert tuple(lease.descriptors) == ("GPU-b",)
-        other = lease.pool.acquire(
-            reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")})
-        )
+        other = lease.pool.acquire(reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")}))
         assert other is not None
         try:
             assert lease.retain_first() == reduced
@@ -114,9 +112,7 @@ def test_interrupted_handoff_retains_full_recoverable_reservation(
     assert lease.pool.reserved() == set()
 
 
-def test_single_gpu_handoff_has_no_durable_rewrite(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_single_gpu_handoff_has_no_durable_rewrite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     lease = _lease(tmp_path, ("GPU-a",))
     original = locks._write_claim
     try:
@@ -155,12 +151,7 @@ def test_failure_after_reduced_record_commit_keeps_locks_and_can_recover(
         assert reduced.devices == ("GPU-b",)
         with pytest.raises(RuntimeError, match="record changed"):
             lease.release_verified()
-        assert (
-            lease.pool.acquire(
-                reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a",)})
-            )
-            is None
-        )
+        assert lease.pool.acquire(reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a",)})) is None
     finally:
         lease.close()
     monkeypatch.undo()
@@ -169,9 +160,7 @@ def test_failure_after_reduced_record_commit_keeps_locks_and_can_recover(
         recovered.release_verified()
     finally:
         recovered.close()
-    other = lease.pool.acquire(
-        reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")})
-    )
+    other = lease.pool.acquire(reduced.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")}))
     assert other is not None
     other.release_verified()
     other.close()
@@ -238,9 +227,7 @@ def test_guardian_acknowledges_only_after_claim_and_public_devices_are_reduced(
             assert child.recv(64) == b"ok-v1"
             assert guardian.lease.pool.reserved() == {"GPU-b"}
             assert guardian.store.view().jobs[0].devices == ("GPU-b",)
-            persisted = GuardianClaim.model_validate_json(
-                (guardian.directory / "claim.json").read_bytes()
-            )
+            persisted = GuardianClaim.model_validate_json((guardian.directory / "claim.json").read_bytes())
             assert persisted.devices == ("GPU-b",)
         child.close()
         guardian._consume_phase()
@@ -254,9 +241,7 @@ def test_guardian_acknowledges_only_after_claim_and_public_devices_are_reduced(
         guardian.lease.close()
 
 
-@pytest.mark.parametrize(
-    "packet", [b"unknown", b"training-finished-v1" + b"x" * 65536], ids=["unknown", "oversized"]
-)
+@pytest.mark.parametrize("packet", [b"unknown", b"training-finished-v1" + b"x" * 65536], ids=["unknown", "oversized"])
 def test_guardian_rejects_unknown_or_oversized_packets_without_releasing_capacity(
     tmp_path: Path,
     packet: bytes,
@@ -454,9 +439,7 @@ with execution_lifecycle() as supervised:
         assert store.view().jobs[0].devices == ("GPU-b",)
         claim = processes.pool.claim_for(job.id)
         assert claim is not None
-        extra = processes.pool.acquire(
-            claim.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")})
-        )
+        extra = processes.pool.acquire(claim.model_copy(update={"job_id": "other", "devices": ("GPU-a", "GPU-c")}))
         assert extra is not None
         if cancel:
             store.cancel(job.id)

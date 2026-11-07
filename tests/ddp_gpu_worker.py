@@ -121,18 +121,14 @@ def _cuda(root: Path, request: dict[str, Any]) -> None:
     assert torch.cuda.is_available(), "Torch CUDA is unavailable"
     assert dist.is_available(), "Torch distributed is unavailable"
     assert dist.is_nccl_available(), "Torch NCCL is unavailable"
-    assert torch.cuda.device_count() == len(request["indexes"]), (
-        "UUID CUDA mapping did not expose selected devices"
-    )
+    assert torch.cuda.device_count() == len(request["indexes"]), "UUID CUDA mapping did not expose selected devices"
     if request["compiled"]:
         assert callable(torch.compile), "torch.compile is unavailable"
     devices = []
     for index in range(torch.cuda.device_count()):
         tensor = torch.ones(2, device=f"cuda:{index}")
         assert tensor.sum().item() == 2
-        devices.append(
-            {"logical_index": index, "uuid": str(torch.cuda.get_device_properties(index).uuid)}
-        )
+        devices.append({"logical_index": index, "uuid": str(torch.cuda.get_device_properties(index).uuid)})
     write(root, "cuda-preflight.json", {"torch_cuda": torch.version.cuda, "devices": devices})
 
 
@@ -146,9 +142,7 @@ def _prepare(root: Path, request: dict[str, Any]) -> None:
 
     config_dir = cast(Callable[[], Path], get_user_config_dir)()
     config_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(
-        Path(mpl.get_data_path()) / "fonts/ttf/DejaVuSans.ttf", config_dir / "Arial.ttf"
-    )
+    shutil.copyfile(Path(mpl.get_data_path()) / "fonts/ttf/DejaVuSans.ttf", config_dir / "Arial.ttf")
     data: dict[str, Any] = {"path": str(root / "dataset"), "names": {0: "box"}}
     for split, count in (("train", max(8, 4 * len(request["indexes"]))), ("val", 4), ("test", 4)):
         images = root / "dataset" / "images" / split
@@ -226,11 +220,7 @@ def _prepare(root: Path, request: dict[str, Any]) -> None:
 
 
 def _events(root: Path) -> list[dict[str, Any]]:
-    return [
-        json.loads(line)
-        for path in root.glob("events-*.jsonl")
-        for line in path.read_text().splitlines()
-    ]
+    return [json.loads(line) for path in root.glob("events-*.jsonl") for line in path.read_text().splitlines()]
 
 
 def _verify(root: Path, request: dict[str, Any]) -> None:
@@ -243,10 +233,7 @@ def _verify(root: Path, request: dict[str, Any]) -> None:
     for rank in ranks:
         assert rank["world_size"] == count
         assert rank["backend"] == "nccl"
-        assert (
-            rank["uuid"].removeprefix("GPU-").lower()
-            == mapped[rank["local_rank"]].removeprefix("GPU-").lower()
-        )
+        assert rank["uuid"].removeprefix("GPU-").lower() == mapped[rank["local_rank"]].removeprefix("GPU-").lower()
         assert rank["compiled"] == request["compiled"]
     for event in events:
         if event["kind"] in {"artifact-attempt", "model-attempt"}:
@@ -258,16 +245,10 @@ def _verify(root: Path, request: dict[str, Any]) -> None:
     assert len(task_events) == 1, "Expected exactly one real invocation ClearML task"
     task_id = task_events[0]["task_id"]
     owner_pid = task_events[0]["pid"]
-    assert all(
-        event["pid"] == owner_pid
-        for event in events
-        if event["kind"] in {"artifact-attempt", "model-attempt"}
-    )
+    assert all(event["pid"] == owner_pid for event in events if event["kind"] in {"artifact-attempt", "model-attempt"})
     from clearml import Task
 
-    tasks: list[Any] = Task.get_tasks(
-        project_name=request["project"], task_filter={"tags": [request["tag"]]}
-    )
+    tasks: list[Any] = Task.get_tasks(project_name=request["project"], task_filter={"tags": [request["tag"]]})
     assert [task.id for task in tasks] == [task_id], "Server task inventory differs from sole owner"
     task: Any = Task.get_task(task_id=task_id)
     successful = request["scenario"] not in {
@@ -284,14 +265,9 @@ def _verify(root: Path, request: dict[str, Any]) -> None:
     }
     write(root, "task-readback.json", result)
     if not successful:
-        assert status.rsplit(".", 1)[-1] in {"failed", "stopped"}, (
-            "Interrupted native task must not report completed"
-        )
+        assert status.rsplit(".", 1)[-1] in {"failed", "stopped"}, "Interrupted native task must not report completed"
         if request["scenario"] == "queued-rank-exit":
-            assert any(
-                event["kind"] == "injected-rank-exit" and event["exit_code"] == 73
-                for event in events
-            )
+            assert any(event["kind"] == "injected-rank-exit" and event["exit_code"] == 73 for event in events)
         write(root, "verification.json", result)
         return
     assert status.rsplit(".", 1)[-1] == "completed", "Native task did not complete"
@@ -299,14 +275,10 @@ def _verify(root: Path, request: dict[str, Any]) -> None:
     for rank in ranks:
         observed = [event for event in epochs if event["rank"] == rank["rank"]]
         assert len(observed) == 2, "Each NCCL rank must finish both optimizer epochs"
-        assert observed[-1]["parameters"] != rank["initial_parameters"], (
-            "Model parameters did not train"
-        )
+        assert observed[-1]["parameters"] != rank["initial_parameters"], "Model parameters did not train"
         assert all(len(set(event["synchronized"])) == 1 for event in observed)
     assert any(event["kind"] == "on_train_end" for event in events)
-    assert any(event["kind"] == "native-validation" for event in events), (
-        "Native CUDA validation did not run"
-    )
+    assert any(event["kind"] == "native-validation" for event in events), "Native CUDA validation did not run"
     assert any(event["kind"] == "pipeline-predict-complete" for event in events), (
         "Production validation/prediction did not run"
     )
@@ -316,20 +288,12 @@ def _verify(root: Path, request: dict[str, Any]) -> None:
 
 def _verify_publications(root: Path, task: Any, result: dict[str, Any]) -> None:
     expected = {"gt_csv", "predicts_csv", "metrics_best_confidences_val"}
-    expected |= {
-        f"metrics_dashboard_{mode}_{split}"
-        for mode in ("full", "dtrk")
-        for split in ("val", "test")
-    }
+    expected |= {f"metrics_dashboard_{mode}_{split}" for mode in ("full", "dtrk") for split in ("val", "test")}
     uploads = _events(root)
     for name in ("gt_csv", "predicts_csv"):
-        assert (
-            sum(
-                event["kind"] == "artifact-attempt" and event.get("name") == name
-                for event in uploads
-            )
-            == 1
-        ), f"Canonical CSV {name} was not uploaded exactly once by its owner"
+        assert sum(event["kind"] == "artifact-attempt" and event.get("name") == name for event in uploads) == 1, (
+            f"Canonical CSV {name} was not uploaded exactly once by its owner"
+        )
     scalars = task.get_reported_scalars()
     assert scalars, "Native owner telemetry is missing from ClearML"
     write(root, "scalars-readback.json", scalars)
@@ -338,9 +302,7 @@ def _verify_publications(root: Path, task: Any, result: dict[str, Any]) -> None:
     titles = {plot.get("metric") for plot in plots}
     assert "Confusion matrix" in titles, "Required evaluated confusion charts are missing"
     assert "Precision-recall" in titles, "Required test precision-recall chart is missing"
-    assert expected <= set(task.artifacts), (
-        f"Required real artifacts missing: {expected - set(task.artifacts)}"
-    )
+    assert expected <= set(task.artifacts), f"Required real artifacts missing: {expected - set(task.artifacts)}"
     downloads = root / "downloads"
     downloads.mkdir(exist_ok=True)
     hashes: dict[str, str] = {}
@@ -360,9 +322,7 @@ def _verify_publications(root: Path, task: Any, result: dict[str, Any]) -> None:
     assert set(predictions["row_type"]) >= {"gt"}
     assert {"val", "test"} <= set(predictions["split"])
     for split in ("val", "test"):
-        assert f"{split}-0.png" in set(predictions["image_name"]), (
-            "Empty images were dropped from publication"
-        )
+        assert f"{split}-0.png" in set(predictions["image_name"]), "Empty images were dropped from publication"
     for mode in ("full", "dtrk"):
         for split in ("val", "test"):
             with pd.ExcelFile(downloads / f"metrics_dashboard_{mode}_{split}.xlsx") as workbook:
@@ -386,20 +346,14 @@ def _verify_checkpoint(root: Path, task: Any, downloads: Path, result: dict[str,
 
     reload = YOLO(str(checkpoint))
     test_images = sorted((root / "dataset/images/test").glob("*.png"))
-    predicted = list(
-        reload.predict([str(path) for path in test_images], device="cpu", imgsz=64, verbose=False)
-    )
-    assert len(predicted) == len(test_images), (
-        "Downloaded checkpoint failed independent inference reload"
-    )
+    predicted = list(reload.predict([str(path) for path in test_images], device="cpu", imgsz=64, verbose=False))
+    assert len(predicted) == len(test_images), "Downloaded checkpoint failed independent inference reload"
     metadata = remote_model.get_all_metadata()
     metadata_hash = metadata.get("clearml_yolo_calibration_checkpoint_sha256", {})
     assert metadata_hash.get("value") == checkpoint_sha256(checkpoint), (
         "Remote calibration metadata is not bound to checkpoint bytes"
     )
-    with (downloads / "metrics_best_confidences_val.csv").open(
-        newline="", encoding="utf-8-sig"
-    ) as stream:
+    with (downloads / "metrics_best_confidences_val.csv").open(newline="", encoding="utf-8-sig") as stream:
         header, *rows = list(csv.reader(stream))
     class_column = header.index("class_name") if "class_name" in header else 0
     confidence_column = header.index("confidence") if "confidence" in header else 1
@@ -422,9 +376,7 @@ def _owned_claim(root: Path) -> Any:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     settings = load_queue_settings()
-    claim = LocalGPULocks(current_identity(), settings.coordination_root).claim_for(
-        (root / "job-id").read_text()
-    )
+    claim = LocalGPULocks(current_identity(), settings.coordination_root).claim_for((root / "job-id").read_text())
     if claim is not None:
         assert claim.queue_root == str(root / "queue")
         assert claim.owner_uid == os.geteuid()
@@ -471,9 +423,7 @@ def _owned_processes(root: Path) -> list[tuple[int, int]]:
         except PermissionError as error:
             if int(path.name) in known and process_birth(int(path.name)) == known[int(path.name)]:
                 write(root, "cleanup-unverified.json", {"pid": path.name, "reason": str(error)})
-                raise RuntimeError(
-                    "Cannot inspect a known owned process; native cleanup is unverified"
-                ) from error
+                raise RuntimeError("Cannot inspect a known owned process; native cleanup is unverified") from error
             uninspected.append(path.name)
     if uninspected:
         write(root, "cleanup-unrelated-uninspected.json", {"pids": uninspected})
@@ -504,8 +454,7 @@ def _cleanup(root: Path) -> None:
     write(root, "cleanup.json", {"initial_survivors": initial, "remaining": remaining})
     assert not remaining, f"Owned native processes survived cleanup: {remaining}"
     assert not initial, (
-        "Production cleanup left native processes alive; "
-        f"harness terminated only owned survivors: {initial}"
+        f"Production cleanup left native processes alive; harness terminated only owned survivors: {initial}"
     )
 
 
@@ -520,9 +469,7 @@ def main() -> None:
     elif operation == "cleanup":
         _cleanup(root)
     else:
-        {"preflight": _preflight, "cuda": _cuda, "prepare": _prepare, "verify": _verify}[operation](
-            root, request
-        )
+        {"preflight": _preflight, "cuda": _cuda, "prepare": _prepare, "verify": _verify}[operation](root, request)
 
 
 if __name__ == "__main__":

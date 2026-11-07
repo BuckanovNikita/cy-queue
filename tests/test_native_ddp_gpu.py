@@ -11,9 +11,7 @@ pytestmark = pytest.mark.ddp_gpu
 
 @pytest.mark.parametrize("queued", [False, True], ids=["direct", "queued"])
 @pytest.mark.parametrize("compiled", [False, True], ids=["eager", "compiled"])
-def test_physical_native_pipeline(
-    ddp_gpu_options: GPUOptions, queued: bool, compiled: bool
-) -> None:
+def test_physical_native_pipeline(ddp_gpu_options: GPUOptions, queued: bool, compiled: bool) -> None:
     scenario = f"{'queued' if queued else 'direct'}-{'compiled' if compiled else 'eager'}"
     root = run_scenario(ddp_gpu_options, scenario, queued=queued, compiled=compiled)
     assert (root / "verification.json").is_file()

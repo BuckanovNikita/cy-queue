@@ -70,9 +70,7 @@ def test_worker_logs_changes_and_heartbeat_without_timestamp_noise(
     messages: list[str] = []
     sink = logger.add(messages.append, format="{level}: {message}", level="INFO")
     try:
-        observer = queue._WorkerLog(
-            owner_uid=7, presentation=QueuePresentation({"GPU-one": 2}, host_id="host")
-        )
+        observer = queue._WorkerLog(owner_uid=7, presentation=QueuePresentation({"GPU-one": 2}, host_id="host"))
         pending = PublicJob(
             id="own-job",
             submission_sequence=17,
@@ -126,13 +124,7 @@ def test_worker_logs_changes_and_heartbeat_without_timestamp_noise(
         messages.clear()
         observer(
             view.model_copy(
-                update={
-                    "jobs": (
-                        running.model_copy(
-                            update={"state": "failed", "error": "Child exit code 2"}
-                        ),
-                    )
-                }
+                update={"jobs": (running.model_copy(update={"state": "failed", "error": "Child exit code 2"}),)}
             )
         )
         assert "ERROR" in "".join(messages)

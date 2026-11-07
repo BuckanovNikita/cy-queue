@@ -89,18 +89,14 @@ class GPULease:
         self.descriptors = descriptors
         self.claim = claim
         self.recovering = recovering
-        self._owned_generations = {
-            uuid: dict(claim.generations).get(uuid, 0) for uuid in descriptors
-        }
+        self._owned_generations = {uuid: dict(claim.generations).get(uuid, 0) for uuid in descriptors}
 
     def _generation(self, uuid: str) -> int:
         return dict(self.claim.generations).get(uuid, 0)
 
     def _current_devices(self) -> tuple[str, ...]:
         current = current_generations(self.pool.root)
-        return tuple(
-            uuid for uuid in self.descriptors if current.get(uuid, 0) == self._generation(uuid)
-        )
+        return tuple(uuid for uuid in self.descriptors if current.get(uuid, 0) == self._generation(uuid))
 
     def is_current_in_transaction(self) -> bool:
         """Caller holds the pool transaction through the final launch gate."""
@@ -131,9 +127,7 @@ class GPULease:
         reduced = self.claim.model_copy(
             update={
                 "devices": (retained,),
-                "generations": tuple(
-                    pair for pair in self.claim.generations if pair[0] == retained
-                ),
+                "generations": tuple(pair for pair in self.claim.generations if pair[0] == retained),
             }
         )
         with self.pool.transaction():
@@ -205,9 +199,7 @@ class LocalGPULocks:
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
-        with host_transaction(
-            self.identity.host_id, name="gpu-transaction.lock", root=self.local_root
-        ):
+        with host_transaction(self.identity.host_id, name="gpu-transaction.lock", root=self.local_root):
             yield
 
     def ensure_control_fence(self) -> None:
@@ -255,9 +247,7 @@ class LocalGPULocks:
         return self.root / f"hold-{device_key(uuid)}-{uid}{suffix}.json"
 
     def _holds(self) -> tuple[GPUHold, ...]:
-        generations = {
-            device_key(uuid): gen for uuid, gen in current_generations(self.root).items()
-        }
+        generations = {device_key(uuid): gen for uuid, gen in current_generations(self.root).items()}
         holds: list[GPUHold] = []
         for path in self.root.glob("hold-*.json"):
             match = re.fullmatch(r"hold-([0-9a-f]{64})-[0-9]+(?:-g([0-9]+))?\.json", path.name)
@@ -345,8 +335,7 @@ class LocalGPULocks:
             devices = tuple(
                 uuid
                 for uuid in claim.devices
-                if owned.get(uuid, 0) == generations.get(uuid, 0)
-                and self._locked(uuid, generations.get(uuid, 0))
+                if owned.get(uuid, 0) == generations.get(uuid, 0) and self._locked(uuid, generations.get(uuid, 0))
             )
             if devices:
                 projected = claim.model_copy(update={"devices": devices})
@@ -370,9 +359,7 @@ class LocalGPULocks:
                 generations[uuid] = advance_generation(self.root, uuid).generation
         return claim.model_copy(
             update={
-                "generations": tuple(
-                    (uuid, generations[uuid]) for uuid in claim.devices if generations.get(uuid, 0)
-                )
+                "generations": tuple((uuid, generations[uuid]) for uuid in claim.devices if generations.get(uuid, 0))
             }
         )
 
@@ -401,9 +388,7 @@ class LocalGPULocks:
                         self._validate_recovery(uuid, generation, claim)
                 if not recovery:
                     for uuid in acquired:
-                        _write_claim(
-                            self.claim_path(uuid, dict(claim.generations).get(uuid, 0)), claim
-                        )
+                        _write_claim(self.claim_path(uuid, dict(claim.generations).get(uuid, 0)), claim)
                     _write_claim(self.evidence_path(claim), claim)
                 succeeded = True
                 return GPULease(self, acquired, claim, recovering=recovery)
@@ -454,9 +439,7 @@ class LocalGPULocks:
 
     def _claims(self, *, live_only: bool = False) -> tuple[GuardianClaim, ...]:
         claims: list[GuardianClaim] = []
-        generations = {
-            device_key(uuid): gen for uuid, gen in current_generations(self.root).items()
-        }
+        generations = {device_key(uuid): gen for uuid, gen in current_generations(self.root).items()}
         for path in self.root.glob("gpu-*.claim.json"):
             if path.name in {_CONTROL_FENCE, _GENERATION_FENCE}:
                 continue
@@ -507,10 +490,7 @@ class LocalGPULocks:
         with self.transaction():
             return tuple(
                 dict.fromkeys(
-                    uuid
-                    for claim in self.transaction_claims()
-                    if claim.job_id == job_id
-                    for uuid in claim.devices
+                    uuid for claim in self.transaction_claims() if claim.job_id == job_id for uuid in claim.devices
                 )
             )
 
@@ -549,14 +529,9 @@ class LocalGPULocks:
             candidates = reduced
         first = candidates[0]
         stable = first.model_dump(exclude={"child_pid", "child_born", "identities"})
-        if any(
-            claim.model_dump(exclude={"child_pid", "child_born", "identities"}) != stable
-            for claim in candidates
-        ):
+        if any(claim.model_dump(exclude={"child_pid", "child_born", "identities"}) != stable for claim in candidates):
             raise RuntimeError("GPU recovery evidence has inconsistent ownership")
-        latest = max(
-            candidates, key=lambda claim: (claim.child_pid is not None, len(claim.identities))
-        )
+        latest = max(candidates, key=lambda claim: (claim.child_pid is not None, len(claim.identities)))
         identities: dict[int, int] = {}
         for claim in candidates:
             for pid, born in claim.identities:

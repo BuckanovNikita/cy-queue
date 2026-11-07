@@ -20,9 +20,7 @@ class _NoGPUs:
 def _service(project: Path) -> QueueService:
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
     store = NFSQueueStore(project / "queue", identity)
-    return QueueService(
-        store, _NoGPUs(), QueueProcesses(store, identity, local_root=project / "local"), identity
-    )
+    return QueueService(store, _NoGPUs(), QueueProcesses(store, identity, local_root=project / "local"), identity)
 
 
 def _snapshot(project: Path, label: str) -> JobSnapshot:
@@ -98,13 +96,9 @@ def _damage_snapshot(
             raise ValueError(f"Unknown test fault: {fault}")
 
 
-@pytest.mark.parametrize(
-    "fault", ["missing", "malformed", "hash", "identity", "permissions", "status"]
-)
+@pytest.mark.parametrize("fault", ["missing", "malformed", "hash", "identity", "permissions", "status"])
 @pytest.mark.parametrize("state", ["pending", "completed", "archived"])
-def test_mixed_queue_preserves_summaries_and_recovers(
-    tmp_path: Path, fault: str, state: str
-) -> None:
+def test_mixed_queue_preserves_summaries_and_recovers(tmp_path: Path, fault: str, state: str) -> None:
     service = _service(tmp_path)
     broken, healthy = service.submit((_snapshot(tmp_path, "old"), _snapshot(tmp_path, "healthy")))
     store = service.storage
@@ -133,9 +127,7 @@ def test_mixed_queue_preserves_summaries_and_recovers(
     assert store.public_path(broken.id).read_bytes() == before
     main = service.list()
     archived = service.list(visibility="archived")
-    assert tuple(job.id for job in main.jobs) == (
-        (healthy.id,) if state == "archived" else (broken.id, healthy.id)
-    )
+    assert tuple(job.id for job in main.jobs) == ((healthy.id,) if state == "archived" else (broken.id, healthy.id))
     assert bool(main.refresh_issues) is (state != "archived")
     assert bool(archived.refresh_issues) is (state == "archived")
 
@@ -150,9 +142,7 @@ def test_mixed_queue_preserves_summaries_and_recovers(
 
 
 @pytest.mark.parametrize("state", ["pending", "running", "completed", "recovery_required"])
-def test_monitoring_never_changes_outcome_or_releases_reservation(
-    tmp_path: Path, state: JobState
-) -> None:
+def test_monitoring_never_changes_outcome_or_releases_reservation(tmp_path: Path, state: JobState) -> None:
     from cy_queue.core.queue import GuardianClaim
 
     service = _service(tmp_path)
@@ -217,9 +207,7 @@ def test_invalid_public_record_is_queue_wide_error(tmp_path: Path) -> None:
         service.list()
 
 
-def test_publication_failure_is_not_a_private_refresh_warning(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_publication_failure_is_not_a_private_refresh_warning(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from cy_queue.adapters.queue import storage
 
     service = _service(tmp_path)

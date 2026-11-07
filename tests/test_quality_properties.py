@@ -113,17 +113,11 @@ class DurableQueueSequences(RuleBasedStateMachine):
         elif old in {"starting", "running"}:
             self.states[identifier] = "cancelling"
 
-    @precondition(
-        lambda self: any(
-            value in {"starting", "running", "cancelling"} for value in self.states.values()
-        )
-    )
+    @precondition(lambda self: any(value in {"starting", "running", "cancelling"} for value in self.states.values()))
     @rule(index=st.integers(min_value=0, max_value=20))
     def advance(self, index: int) -> None:
         active = [
-            identifier
-            for identifier in self.order
-            if self.states[identifier] in {"starting", "running", "cancelling"}
+            identifier for identifier in self.order if self.states[identifier] in {"starting", "running", "cancelling"}
         ]
         identifier = active[index % len(active)]
         old = self.states[identifier]

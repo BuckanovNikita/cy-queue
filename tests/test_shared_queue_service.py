@@ -9,9 +9,7 @@ import pytest
 pytestmark = pytest.mark.usefixtures("queue_memory")
 
 
-def test_cold_driver_failure_keeps_job_pending(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_cold_driver_failure_keeps_job_pending(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from types import SimpleNamespace
 
     from cy_queue.adapters.queue.inventory import QueueGPUInventory
@@ -67,9 +65,7 @@ def test_service_submits_schedules_then_cancels_without_retry(tmp_path: Path) ->
 
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
     store = NFSQueueStore(tmp_path / "queue", identity)
-    processes = QueueProcesses(
-        store, identity, local_root=tmp_path / "locks", child_module="not_a_real_child"
-    )
+    processes = QueueProcesses(store, identity, local_root=tmp_path / "locks", child_module="not_a_real_child")
     service = QueueService(store, Inventory(), processes, identity)
     job = service.submit(
         (
@@ -184,8 +180,7 @@ def test_one_owner_worker_runs_disjoint_guardians_concurrently(tmp_path: Path) -
         for label in ("first", "second")
     )
     script = (
-        "import os,sys,time; from pathlib import Path; "
-        "Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)"
+        "import os,sys,time; from pathlib import Path; Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)"
     )
     processes = QueueProcesses(
         store,
@@ -209,10 +204,7 @@ def test_one_owner_worker_runs_disjoint_guardians_concurrently(tmp_path: Path) -
             while not all((tmp_path / f"{label}.pid").exists() for label in ("first", "second")):
                 assert time.monotonic() < deadline
                 time.sleep(0.02)
-            pids = [
-                int((tmp_path / f"{label}.pid").read_text(encoding="utf-8"))
-                for label in ("first", "second")
-            ]
+            pids = [int((tmp_path / f"{label}.pid").read_text(encoding="utf-8")) for label in ("first", "second")]
             assert processes.reserved() == {"GPU-a", "GPU-b"}
             assert all(process_birth(pid) is not None for pid in pids)
             service.cancel(jobs[0].id)

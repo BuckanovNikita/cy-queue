@@ -19,9 +19,7 @@ def _group(tags: list[str], user_tags: list[str]) -> str:
 
 
 @pytest.mark.parametrize("mode", [["-m"], ["hydra.mode=MULTIRUN"]])
-def test_queue_freezes_group_tags_across_jobs_and_execution(
-    tmp_path: Path, mode: list[str]
-) -> None:
+def test_queue_freezes_group_tags_across_jobs_and_execution(tmp_path: Path, mode: list[str]) -> None:
     arguments = [*mode, "ground_truth=input.csv", "clearml.tags=[first],[second]"]
     first = compose_snapshots(arguments, ResourceRequest(gpus=1), project_root=tmp_path)
     second = compose_snapshots(arguments, ResourceRequest(gpus=1), project_root=tmp_path)

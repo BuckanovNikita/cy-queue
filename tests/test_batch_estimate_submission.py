@@ -52,9 +52,7 @@ def test_null_batch_survives_snapshot_and_worker_exec(
     arguments = ["ground_truth=inputs.csv", f"{prefix}.batch=null"]
     if selection is not None:
         arguments.append(f"model={selection}")
-    snapshot = compose_snapshots(
-        arguments, ResourceRequest(gpus=2), project_root=tmp_path, command=command
-    )[0]
+    snapshot = compose_snapshots(arguments, ResourceRequest(gpus=2), project_root=tmp_path, command=command)[0]
     # The real storage submission boundary stamps the submitting owner's UID.
     owned = snapshot.model_copy(update={"owner_uid": os.geteuid()})
     loaded = JobSnapshot.model_validate_json(owned.model_dump_json())
@@ -87,9 +85,7 @@ def _profile(model: ModelVariant, devices: tuple[GPUDevice, ...]) -> TrainingPro
         nominal_size=(800, 800),
         effective_size=(800, 800),
         gpus=tuple(
-            GPUHardware(
-                name=device.name, total_memory_bytes=device.total_memory_bytes, uuid=device.uuid
-            )
+            GPUHardware(name=device.name, total_memory_bytes=device.total_memory_bytes, uuid=device.uuid)
             for device in devices
         ),
         dependencies={"fixture": "1"},
@@ -160,9 +156,7 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
     store.save(_case(_profile(model, assigned[:1]), 32))
     store.save(_case(_profile(model, assigned), 16))
     manifest = tmp_path / "manifest.json"
-    manifest.write_text(
-        json.dumps({"class_names": {"0": "class"}, "images": [{"split": "train", "boxes": 2}]})
-    )
+    manifest.write_text(json.dumps({"class_names": {"0": "class"}, "images": [{"split": "train", "boxes": 2}]}))
     prepared = PreparedDataset(
         data=tmp_path / "data.yaml",
         ground_truth=tmp_path / "truth.csv",
@@ -172,9 +166,7 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
     )
     observed: list[tuple[str, ...]] = []
 
-    def profile(
-        selected: ModelVariant, _size: int, devices: tuple[GPUDevice, ...], **_kwargs: Any
-    ) -> TrainingProfile:
+    def profile(selected: ModelVariant, _size: int, devices: tuple[GPUDevice, ...], **_kwargs: Any) -> TrainingProfile:
         observed.append(tuple(device.uuid for device in devices))
         return _profile(selected, devices)
 

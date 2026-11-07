@@ -102,9 +102,7 @@ def test_effective_uid_cannot_be_asserted_by_configuration(tmp_path: Path) -> No
     from cy_queue.core.queue import WorkerIdentity
 
     with pytest.raises(PermissionError, match="effective"):
-        NFSQueueStore(
-            tmp_path, WorkerIdentity(owner_uid=os.geteuid() + 1, host_id="h", boot_id="b")
-        )
+        NFSQueueStore(tmp_path, WorkerIdentity(owner_uid=os.geteuid() + 1, host_id="h", boot_id="b"))
 
 
 def test_competing_start_does_not_replace_committed_guardian_payload(tmp_path: Path) -> None:
@@ -141,9 +139,7 @@ def test_reorder_after_admission_decision_rejects_stale_claim(tmp_path: Path) ->
 
 def test_pending_move_crosses_completed_history_using_pending_neighbors(tmp_path: Path) -> None:
     store = _store(tmp_path / "queue")
-    jobs = store.submit(
-        tuple(_snapshot(tmp_path, label) for label in ("first", "finished", "last"))
-    )
+    jobs = store.submit(tuple(_snapshot(tmp_path, label) for label in ("first", "finished", "last")))
     store.update(jobs[1].id, "completed")
     view = store.view()
     moved = store.move(jobs[2].id, "up", view.revision)

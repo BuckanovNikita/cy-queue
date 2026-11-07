@@ -78,9 +78,7 @@ def test_freed_first_gpu_stays_first_during_training_handoff(tmp_path: Path) -> 
     new = None
     try:
         GPUControls(pool, physical_uuids=lambda: (GPU_A, GPU_B)).release("0")
-        new = pool.acquire(
-            claim.model_copy(update={"job_id": "new", "marker": "new", "devices": (GPU_A,)})
-        )
+        new = pool.acquire(claim.model_copy(update={"job_id": "new", "marker": "new", "devices": (GPU_A,)}))
         assert new is not None
         reduced = old.retain_first()
         assert reduced.devices == (GPU_A,)
@@ -153,9 +151,7 @@ time.sleep(60)
         GPUControls(pool, physical_uuids=lambda: (GPU_A, GPU_B)).release("0")
         assert child.poll() is None
         assert pool.reserved() == {GPU_B}
-        new = pool.acquire(
-            claim.model_copy(update={"job_id": "new", "marker": "new", "devices": (GPU_A,)})
-        )
+        new = pool.acquire(claim.model_copy(update={"job_id": "new", "marker": "new", "devices": (GPU_A,)}))
         assert new is not None
     finally:
         if new is not None:
@@ -187,9 +183,7 @@ if lease is not None:
     children: list[subprocess.Popen[str]] = []
     try:
         for index in range(2):
-            contender = claim.model_copy(
-                update={"job_id": f"contender-{index}", "marker": f"contender-{index}"}
-            )
+            contender = claim.model_copy(update={"job_id": f"contender-{index}", "marker": f"contender-{index}"})
             child = subprocess.Popen(  # noqa: S603 - fixed local test program
                 [
                     sys.executable,
@@ -239,9 +233,7 @@ def test_legacy_generation_zero_claim_remains_recoverable_after_reallocation(
     for uuid in claim.devices:
         atomic_write(pool.claim_path(uuid), json.dumps(payload))
     assert pool.reserved() == set()
-    replacement = pool.acquire(
-        claim.model_copy(update={"job_id": "replacement", "marker": "replacement"})
-    )
+    replacement = pool.acquire(claim.model_copy(update={"job_id": "replacement", "marker": "replacement"}))
     assert replacement is not None
     try:
         assert pool.claim_for(claim.job_id) == claim

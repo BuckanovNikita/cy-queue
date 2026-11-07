@@ -95,9 +95,7 @@ def test_queue_labels_use_frozen_job_local_task_names(tmp_path: Path, source: st
 
 
 @pytest.mark.parametrize("plugin", ["sweeper", "launcher"])
-def test_nonsequential_sweep_plugins_are_rejected_before_instantiation(
-    tmp_path: Path, plugin: str
-) -> None:
+def test_nonsequential_sweep_plugins_are_rejected_before_instantiation(tmp_path: Path, plugin: str) -> None:
     with pytest.raises(ValueError, match="BasicSweeper/BasicLauncher"):
         compose_snapshots(
             ["-m", "ground_truth=input.csv", f"hydra.{plugin}._target_=unsupported.Launch"],

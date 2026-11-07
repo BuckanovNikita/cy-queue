@@ -92,9 +92,7 @@ def test_refresh_still_recovers_unchanged_lost_active_job(
 ) -> None:
     store, processes, job, claim = refresh_case
     observed = store.update(job.id, state)
-    monkeypatch.setattr(
-        processes.pool, "claim_for", lambda identifier: claim if retained_claim else None
-    )
+    monkeypatch.setattr(processes.pool, "claim_for", lambda identifier: claim if retained_claim else None)
     processes._refresh_job(observed)
 
     result = store.view().jobs[0]
@@ -147,9 +145,7 @@ def test_refresh_also_requires_matching_observed_state(
     store, processes, current, claim = refresh_case
     # Isolate state comparison from revision comparison at the storage boundary.
     observed = current.model_copy(update={"state": "starting"})
-    monkeypatch.setattr(
-        processes.pool, "claim_for", lambda identifier: claim if retained_claim else None
-    )
+    monkeypatch.setattr(processes.pool, "claim_for", lambda identifier: claim if retained_claim else None)
     processes._refresh_job(observed)
     assert store.view().jobs == (current,)
 
@@ -166,9 +162,7 @@ def test_conditional_recovery_still_checks_owner_for_stale_observation(
 
 
 @pytest.mark.parametrize("state", ["completed", "failed", "cancelled"])
-@pytest.mark.parametrize(
-    "claim_change", ["released", "owner", "guardian", "generation", "identities"]
-)
+@pytest.mark.parametrize("claim_change", ["released", "owner", "guardian", "generation", "identities"])
 def test_terminal_refresh_defers_claim_changed_during_liveness_check(
     refresh_case: tuple[NFSQueueStore, QueueProcesses, PublicJob, GuardianClaim],
     monkeypatch: pytest.MonkeyPatch,

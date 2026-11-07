@@ -236,9 +236,7 @@ time.sleep(60)
 def test_owner_signal_rejects_reused_birth_without_signalling_replacement() -> None:
     from cy_queue.adapters.queue.guardian import _signal_owner
 
-    child = subprocess.Popen(
-        [sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True
-    )
+    child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True)
     try:
         born = process_birth(child.pid)
         assert born is not None

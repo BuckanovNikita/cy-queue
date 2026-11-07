@@ -52,9 +52,7 @@ class QueueProcessPort(Protocol):
     def reserved(self) -> set[str]: ...
     def held(self) -> set[str]: ...
     def allocated_devices(self, identifier: str) -> tuple[str, ...]: ...
-    def start(
-        self, job: PublicJob, devices: tuple[str, ...], *, expected_revision: int | None = None
-    ) -> bool: ...
+    def start(self, job: PublicJob, devices: tuple[str, ...], *, expected_revision: int | None = None) -> bool: ...
     def recover(self, identifier: str) -> PublicJob: ...
     def worker_registration(self) -> AbstractContextManager[None]: ...
     def pause(self, seconds: float) -> None: ...
@@ -103,14 +101,10 @@ class QueueService:
         return self.controls
 
     def submit(self, snapshots: Sequence[JobSnapshot]) -> tuple[PublicJob, ...]:
-        validated = tuple(
-            JobSnapshot.model_validate(snapshot.model_dump()) for snapshot in snapshots
-        )
+        validated = tuple(JobSnapshot.model_validate(snapshot.model_dump()) for snapshot in snapshots)
         return self.storage.submit(validated)
 
-    def list(
-        self, host_id: str | None = None, *, visibility: QueueVisibility = "main"
-    ) -> QueueView:
+    def list(self, host_id: str | None = None, *, visibility: QueueVisibility = "main") -> QueueView:
         if host_id is not None and host_id != self.identity.host_id:
             return self._visible(self.storage.view(host_id), visibility)
         issues = self.processes.refresh_monitoring()
@@ -120,17 +114,13 @@ class QueueService:
         owners = set(inventories)
         reserved = self.processes.reserved()
         held = self.processes.held()
-        selected = earliest_runnable(
-            view.jobs, (), owners, reserved=reserved, owner_observations=inventories
-        )
+        selected = earliest_runnable(view.jobs, (), owners, reserved=reserved, owner_observations=inventories)
         jobs: list[PublicJob] = []
         for job in view.jobs:
             if job.id in unavailable:
                 jobs.append(job)
             elif job.state == "pending":
-                reason = waiting_reason(
-                    job, inventories.get(job.owner_uid, ()), owners, reserved, held
-                )
+                reason = waiting_reason(job, inventories.get(job.owner_uid, ()), owners, reserved, held)
                 if reason is None:
                     reason = (
                         "Ready for owner worker admission"
@@ -140,9 +130,7 @@ class QueueService:
                 jobs.append(job.model_copy(update={"waiting_reason": reason}))
             else:
                 jobs.append(self._allocation(job))
-        return self._visible(
-            view.model_copy(update={"jobs": tuple(jobs), "refresh_issues": issues}), visibility
-        )
+        return self._visible(view.model_copy(update={"jobs": tuple(jobs), "refresh_issues": issues}), visibility)
 
     @staticmethod
     def _visible(view: QueueView, visibility: QueueVisibility) -> QueueView:
@@ -154,16 +142,13 @@ class QueueService:
         jobs = tuple(
             job
             for job in view.jobs
-            if (job.id in archived and job.state in TERMINAL_JOB_STATES)
-            == (visibility == "archived")
+            if (job.id in archived and job.state in TERMINAL_JOB_STATES) == (visibility == "archived")
         )
         visible_ids = {job.id for job in jobs}
         return view.model_copy(
             update={
                 "jobs": jobs,
-                "refresh_issues": tuple(
-                    issue for issue in view.refresh_issues if issue.job_id in visible_ids
-                ),
+                "refresh_issues": tuple(issue for issue in view.refresh_issues if issue.job_id in visible_ids),
             }
         )
 
@@ -187,9 +172,7 @@ class QueueService:
         relative_job_id: str | None = None,
     ) -> QueueView:
         return self._visible(
-            self.storage.move(
-                job_id, direction, expected_revision, relative_job_id=relative_job_id
-            ),
+            self.storage.move(job_id, direction, expected_revision, relative_job_id=relative_job_id),
             "main",
         )
 
@@ -225,9 +208,7 @@ class QueueService:
         held = self.processes.held()
         self.storage.set_waiting(
             {
-                job.id: waiting_reason(
-                    job, inventories.get(job.owner_uid, ()), owners, reserved, held
-                )
+                job.id: waiting_reason(job, inventories.get(job.owner_uid, ()), owners, reserved, held)
                 for job in view.jobs
                 if job.state == "pending" and job.owner_uid == self.identity.owner_uid
             }

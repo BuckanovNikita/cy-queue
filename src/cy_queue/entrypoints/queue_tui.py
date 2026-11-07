@@ -32,9 +32,7 @@ class QueueApp(App[None]):
         Binding("escape", "dismiss_move", "Back", show=False),
     ]
 
-    def __init__(
-        self, service: QueueService, *, presentation: QueuePresentation | None = None
-    ) -> None:
+    def __init__(self, service: QueueService, *, presentation: QueuePresentation | None = None) -> None:
         super().__init__()
         self.service = service
         self.presentation = presentation or QueuePresentation()
@@ -77,9 +75,7 @@ class QueueApp(App[None]):
         try:
             view = self.service.list(visibility=self.visibility)
         except (OSError, ValueError, RuntimeError) as error:
-            self.query_one("#status", Static).update(
-                self.presentation.text(f"Queue unavailable: {error}")
-            )
+            self.query_one("#status", Static).update(self.presentation.text(f"Queue unavailable: {error}"))
             return
         self.view = view
         messages = self.presentation.refresh_messages(view)

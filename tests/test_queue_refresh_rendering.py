@@ -177,9 +177,7 @@ def test_tui_warnings_clear_after_refresh_without_losing_selection() -> None:
             assert table.cursor_row == 0
             assert "Job 2 · Older training" in table.get_row_at(table.cursor_row)
             assert "75%" in table.get_row_at(1)
-            assert all(
-                _DIAGNOSTIC not in table.get_row_at(index) for index in range(table.row_count)
-            )
+            assert all(_DIAGNOSTIC not in table.get_row_at(index) for index in range(table.row_count))
             assert "warnings 0" in str(application.query_one("#status", Static).render())
 
     asyncio.run(exercise())

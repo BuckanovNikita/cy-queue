@@ -57,9 +57,7 @@ class QueueProcesses:
         command_builder: CommandBuilder | None = None,
         max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB,
     ) -> None:
-        self.max_used_memory_gib = AutoGPUControl(
-            max_used_memory_gib=max_used_memory_gib
-        ).max_used_memory_gib
+        self.max_used_memory_gib = AutoGPUControl(max_used_memory_gib=max_used_memory_gib).max_used_memory_gib
         self.store = store
         self.identity = identity
         selected = local_root.resolve() if local_root is not None else store.local_root
@@ -102,9 +100,7 @@ class QueueProcesses:
             try:
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError:
-                raise RuntimeError(
-                    "One live queue worker per owner/root is already registered"
-                ) from None
+                raise RuntimeError("One live queue worker per owner/root is already registered") from None
             self._worker_born = process_birth(os.getpid())
             if self._worker_born is None:
                 raise RuntimeError("Worker process identity is unavailable")
@@ -187,9 +183,7 @@ class QueueProcesses:
                 continue
             if status is not None:
                 # Shared publication/coordination failures must remain queue-wide errors.
-                self.store.publish_status(
-                    job.id, progress=status.progress, clearml_url=status.task_url
-                )
+                self.store.publish_status(job.id, progress=status.progress, clearml_url=status.task_url)
         return tuple(issues)
 
     def _refresh_job(self, job: PublicJob) -> None:
@@ -197,10 +191,7 @@ class QueueProcesses:
         if claim is not None:
             if claim.owner_uid != self.identity.owner_uid:
                 raise RuntimeError("Local GPU claim owner disagrees with the NFS job owner")
-            live = (
-                claim.boot_id == self.identity.boot_id
-                and process_birth(claim.guardian_pid) == claim.guardian_born
-            )
+            live = claim.boot_id == self.identity.boot_id and process_birth(claim.guardian_pid) == claim.guardian_born
             if not live and job.state != "recovery_required":
                 if self.pool.claim_for(job.id) != claim:
                     return
@@ -214,13 +205,8 @@ class QueueProcesses:
         directory = self.store.snapshot_path(job.id).parent
         launch_path = directory / "launch.json"
         if launch_path.exists():
-            launch = WorkerRecord.model_validate_json(
-                _read(launch_path, job.owner_uid, private=True)
-            )
-            if (
-                launch.identity.boot_id == self.identity.boot_id
-                and process_birth(launch.pid) == launch.born
-            ):
+            launch = WorkerRecord.model_validate_json(_read(launch_path, job.owner_uid, private=True))
+            if launch.identity.boot_id == self.identity.boot_id and process_birth(launch.pid) == launch.born:
                 return
         elif time.time() - job.updated_at < _STARTUP_WINDOW_SECONDS:
             return
@@ -229,9 +215,7 @@ class QueueProcesses:
             error=("Execution state is uncertain; owner recovery required"),
         )
 
-    def start(
-        self, job: PublicJob, devices: tuple[str, ...], *, expected_revision: int | None = None
-    ) -> bool:
+    def start(self, job: PublicJob, devices: tuple[str, ...], *, expected_revision: int | None = None) -> bool:
         snapshot = self.store.load_snapshot(job.id)
         check_interpreter_supervision(snapshot.interpreter)
         path = self.store.snapshot_path(job.id)
@@ -279,13 +263,9 @@ class QueueProcesses:
         self._guardians[process.pid] = process
         born = process_birth(process.pid)
         if born is None:
-            self.store.update(
-                job.id, "recovery_required", error="Guardian identity disappeared before startup"
-            )
+            self.store.update(job.id, "recovery_required", error="Guardian identity disappeared before startup")
             return False
-        launch = WorkerRecord(
-            identity=self.identity, pid=process.pid, born=born, heartbeat=time.time()
-        )
+        launch = WorkerRecord(identity=self.identity, pid=process.pid, born=born, heartbeat=time.time())
         atomic_write(directory / "launch.json", launch.model_dump_json(), 0o600)
         Path(payload.start_gate).touch(mode=0o600)
         deadline = time.monotonic() + 10
@@ -317,10 +297,7 @@ class QueueProcesses:
         claim = self.pool.claim_for(job.id)
         if claim is None:
             claim = self._startup_claim(job)
-        if (
-            claim.boot_id == self.identity.boot_id
-            and process_birth(claim.guardian_pid) == claim.guardian_born
-        ):
+        if claim.boot_id == self.identity.boot_id and process_birth(claim.guardian_pid) == claim.guardian_born:
             raise RuntimeError("Guardian is still alive; cancel it before attempting recovery")
         lease = self.pool.acquire_recovery(claim)
         try:
@@ -340,9 +317,7 @@ class QueueProcesses:
 
     def _startup_claim(self, job: PublicJob) -> GuardianClaim:
         directory = self.store.snapshot_path(job.id).parent
-        payload = GuardianPayload.model_validate_json(
-            _read(directory / "guardian.json", job.owner_uid, private=True)
-        )
+        payload = GuardianPayload.model_validate_json(_read(directory / "guardian.json", job.owner_uid, private=True))
         if (
             payload.job_id != job.id
             or payload.identity.owner_uid != self.identity.owner_uid

@@ -36,9 +36,7 @@ def test_configuration_is_required_even_with_explicit_metadata_override(tmp_path
 
 
 @pytest.mark.parametrize("xdg", [None, "", "relative", "absolute"])
-def test_default_configuration_uses_the_users_config_directory(
-    tmp_path: Path, xdg: str | None
-) -> None:
+def test_default_configuration_uses_the_users_config_directory(tmp_path: Path, xdg: str | None) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     environment = {"HOME": str(tmp_path / "home")}
@@ -96,11 +94,7 @@ def test_each_user_must_fill_all_required_fields(tmp_path: Path, missing: str) -
     directory = config_home / "clearml-yolo"
     directory.mkdir(parents=True)
     path = _configuration(directory)
-    path.write_text(
-        "\n".join(
-            line for line in path.read_text().splitlines() if not line.startswith(missing + " =")
-        )
-    )
+    path.write_text("\n".join(line for line in path.read_text().splitlines() if not line.startswith(missing + " =")))
     with pytest.raises(ValueError, match=r"expected.*name, root and coordination_root"):
         load_queue_settings(environ={"XDG_CONFIG_HOME": str(config_home)})
     assert list(directory.iterdir()) == [path]
@@ -114,9 +108,7 @@ def test_two_users_can_select_the_same_queue_from_their_own_files(tmp_path: Path
         home = tmp_path / user
         directory = home / ".config" / "clearml-yolo"
         directory.mkdir(parents=True)
-        _configuration(
-            directory, root=str(tmp_path / "shared"), coordination_root=str(tmp_path / "locks")
-        )
+        _configuration(directory, root=str(tmp_path / "shared"), coordination_root=str(tmp_path / "locks"))
         settings.append(load_queue_settings(environ={"HOME": str(home)}))
     assert settings[0].config_path != settings[1].config_path
     assert settings[0].root == settings[1].root == tmp_path / "shared"
@@ -156,9 +148,7 @@ def test_resolving_configuration_never_creates_queue_directories(tmp_path: Path)
 
 
 @pytest.mark.parametrize("value", [12, 12.0, 0.5])
-def test_configured_memory_threshold_is_numeric_and_resolved_without_effects(
-    tmp_path: Path, value: float
-) -> None:
+def test_configured_memory_threshold_is_numeric_and_resolved_without_effects(tmp_path: Path, value: float) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     path = _configuration(tmp_path, max_used_memory_gib=value)
@@ -169,9 +159,7 @@ def test_configured_memory_threshold_is_numeric_and_resolved_without_effects(
 
 
 @pytest.mark.parametrize("value", ["0", "-1.0", "inf", "-inf", "nan", "true", '"12"'])
-def test_invalid_memory_threshold_fails_before_creating_resources(
-    tmp_path: Path, value: str
-) -> None:
+def test_invalid_memory_threshold_fails_before_creating_resources(tmp_path: Path, value: str) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     path = _configuration(tmp_path)
@@ -187,9 +175,7 @@ def test_metadata_override_and_agreeing_legacy_environment_are_explicit(tmp_path
 
     path = _configuration(tmp_path)
     root = tmp_path / "another-queue"
-    settings = load_queue_settings(
-        root, environ={"CY_QUEUE_CONFIG": str(path), "CY_QUEUE_ROOT": str(root)}
-    )
+    settings = load_queue_settings(root, environ={"CY_QUEUE_CONFIG": str(path), "CY_QUEUE_ROOT": str(root)})
     assert settings.root == root
     assert settings.root_source == "--root"
     assert settings.coordination_root == tmp_path / "coordination"
@@ -200,9 +186,7 @@ def test_legacy_environment_cannot_silently_select_another_queue(tmp_path: Path)
 
     path = _configuration(tmp_path)
     with pytest.raises(ValueError, match=r"CY_QUEUE_ROOT.*conflict"):
-        load_queue_settings(
-            environ={"CY_QUEUE_CONFIG": str(path), "CY_QUEUE_ROOT": str(tmp_path / "old")}
-        )
+        load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path), "CY_QUEUE_ROOT": str(tmp_path / "old")})
 
 
 @pytest.mark.parametrize(
@@ -216,9 +200,7 @@ def test_legacy_environment_cannot_silently_select_another_queue(tmp_path: Path)
         {"typo": "unrecognized"},
     ],
 )
-def test_invalid_configuration_fails_before_creating_resources(
-    tmp_path: Path, values: dict[str, object]
-) -> None:
+def test_invalid_configuration_fails_before_creating_resources(tmp_path: Path, values: dict[str, object]) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     path = _configuration(tmp_path, **values)
@@ -248,10 +230,7 @@ def test_network_mount_is_allowed_for_metadata_but_refused_for_coordination(
 
     def mountinfo(path: Path, *_args: object, **_kwargs: object) -> str:
         if path == Path("/proc/self/mountinfo"):
-            return (
-                "1 0 0:1 / / rw - ext4 /dev/root rw\n"
-                f"2 1 0:2 / {network} rw - {filesystem} server:/queue rw\n"
-            )
+            return f"1 0 0:1 / / rw - ext4 /dev/root rw\n2 1 0:2 / {network} rw - {filesystem} server:/queue rw\n"
         return original(path)
 
     monkeypatch.setattr(Path, "read_text", mountinfo)
@@ -280,9 +259,7 @@ def test_nfs_coordination_accepts_effective_hard_host_local_flock(
 ) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
-    _mountinfo(
-        monkeypatch, f"1 0 0:1 / / rw - {filesystem} server:/queue rw,hard,local_lock={locking}\n"
-    )
+    _mountinfo(monkeypatch, f"1 0 0:1 / / rw - {filesystem} server:/queue rw,hard,local_lock={locking}\n")
     path = _configuration(tmp_path)
     settings = load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)})
     assert settings.coordination_root == tmp_path / "coordination"
@@ -311,9 +288,7 @@ def test_nfs_coordination_rejects_unsafe_effective_options(
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     # Options before the separator cannot override the effective superblock options.
-    _mountinfo(
-        monkeypatch, f"1 0 0:1 / / rw,hard,local_lock=flock - nfs4 server:/queue {options}\n"
-    )
+    _mountinfo(monkeypatch, f"1 0 0:1 / / rw,hard,local_lock=flock - nfs4 server:/queue {options}\n")
     path = _configuration(tmp_path)
     with pytest.raises(ValueError, match=r"NFS coordination.*hard.*local_lock"):
         load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)})
@@ -334,21 +309,14 @@ def test_coordination_validation_uses_longest_decoded_mountpoint(
         f"3 2 0:3 / {encoded}/unsafe rw - nfs4 server:/unsafe rw,hard,local_lock=none\n",
     )
     path = _configuration(tmp_path, coordination_root=str(mount / "safe"))
-    assert (
-        load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)}).coordination_root
-        == mount / "safe"
-    )
+    assert load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)}).coordination_root == mount / "safe"
     _configuration(tmp_path, coordination_root=str(mount / "unsafe" / "locks"))
     with pytest.raises(ValueError, match="NFS coordination"):
         load_queue_settings(environ={"CY_QUEUE_CONFIG": str(path)})
 
 
-@pytest.mark.parametrize(
-    "record", ["malformed", "1 0 0:1 / / rw - nfs4", "1 0 0:1 / / rw - nfs4 server:/queue"]
-)
-def test_incomplete_mount_records_fail_closed(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, record: str
-) -> None:
+@pytest.mark.parametrize("record", ["malformed", "1 0 0:1 / / rw - nfs4", "1 0 0:1 / / rw - nfs4 server:/queue"])
+def test_incomplete_mount_records_fail_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, record: str) -> None:
     from cy_queue.adapters.queue.settings import load_queue_settings
 
     _mountinfo(monkeypatch, record)

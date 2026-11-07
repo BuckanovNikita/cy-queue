@@ -56,9 +56,7 @@ class _QueueConfiguration(BaseModel):
     name: str
     root: str
     coordination_root: str
-    max_used_memory_gib: float = Field(
-        default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False
-    )
+    max_used_memory_gib: float = Field(default=DEFAULT_MAX_USED_MEMORY_GIB, strict=True, gt=0, allow_inf_nan=False)
 
     @field_validator("name")
     @classmethod
@@ -88,15 +86,9 @@ def _require_coordination_filesystem(path: Path) -> None:
     for line in mountinfo.splitlines():
         before, separator, after = line.partition(" - ")
         fields, filesystem = before.split(), after.split()
-        if (
-            not separator
-            or len(fields) <= _MOUNTPOINT_FIELD
-            or len(filesystem) <= _SUPERBLOCK_FIELD
-        ):
+        if not separator or len(fields) <= _MOUNTPOINT_FIELD or len(filesystem) <= _SUPERBLOCK_FIELD:
             raise RuntimeError("Cannot determine the queue coordination filesystem")
-        mount = Path(
-            re.sub(r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), fields[_MOUNTPOINT_FIELD])
-        )
+        mount = Path(re.sub(r"\\([0-7]{3})", lambda match: chr(int(match[1], 8)), fields[_MOUNTPOINT_FIELD]))
         if path.is_relative_to(mount) and (selected is None or len(mount.parts) >= selected[0]):
             selected = (
                 len(mount.parts),

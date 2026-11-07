@@ -130,9 +130,7 @@ def test_gpu_list_public_view_omits_nested_claim_tokens_and_raw_devices() -> Non
 
 
 @pytest.mark.parametrize("as_json", [False, True])
-def test_gpu_list_cli_projects_internal_control_records(
-    capsys: pytest.CaptureFixture[str], *, as_json: bool
-) -> None:
+def test_gpu_list_cli_projects_internal_control_records(capsys: pytest.CaptureFixture[str], *, as_json: bool) -> None:
     from cy_queue.application.queue import QueueGPUControlPort
     from cy_queue.entrypoints.queue import _gpu_operation, _parser
 
@@ -182,9 +180,7 @@ def test_queue_worker_has_no_memory_threshold_override() -> None:
     assert failure.value.code == 2
 
 
-def test_cli_failure_is_sanitized(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_cli_failure_is_sanitized(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     from cy_queue.entrypoints import queue
 
     def fail(arguments: argparse.Namespace) -> None:
@@ -328,17 +324,13 @@ def test_job_mutation_output_never_serializes_gpu_ids(
         ) -> QueueView:
             return QueueView(host_id="local", revision=1, jobs=(_job(),))
 
-    monkeypatch.setattr(
-        queue, "_presentation", lambda host: QueuePresentation({GPU_A: 0, GPU_B: 2})
-    )
+    monkeypatch.setattr(queue, "_presentation", lambda host: QueuePresentation({GPU_A: 0, GPU_B: 2}))
     arguments = [action, "job"]
     if action != "move":
         arguments.append("--json")
     if action == "move":
         arguments.extend(["top", "--revision", "0"])
-    queue._queue_operation(
-        cast(QueueService, Service()), queue._parser().parse_args(arguments), tmp_path
-    )
+    queue._queue_operation(cast(QueueService, Service()), queue._parser().parse_args(arguments), tmp_path)
     rendered = capsys.readouterr().out
     assert GPU_A not in rendered
     assert GPU_B not in rendered

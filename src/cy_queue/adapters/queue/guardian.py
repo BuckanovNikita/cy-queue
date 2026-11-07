@@ -138,9 +138,7 @@ class _Guardian:
         pool.ensure_control_fence()
         self.lease = pool.acquire(self.claim)
         if self.lease is None:
-            state: JobState = (
-                "cancelled" if self.store.cancelled(self.payload.job_id) else "pending"
-            )
+            state: JobState = "cancelled" if self.store.cancelled(self.payload.job_id) else "pending"
             self.store.update(self.payload.job_id, state, devices=())
             return False
         self.claim = self.lease.claim
@@ -178,16 +176,11 @@ class _Guardian:
                     "CY_QUEUE_EXEC_GATE": str(read_gate),
                     CHANNEL_FD_ENV: str(child_channel.fileno()),
                     "CY_PROGRESS_FILE": str(
-                        Path(self.payload.project_root)
-                        / ".cy"
-                        / "queue-status"
-                        / f"{self.payload.job_id}.json"
+                        Path(self.payload.project_root) / ".cy" / "queue-status" / f"{self.payload.job_id}.json"
                     ),
                 }
             )
-            descriptor = os.open(
-                self._log_path(), os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600
-            )
+            descriptor = os.open(self._log_path(), os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
             with os.fdopen(descriptor, "ab", buffering=0) as output:
                 self.child = subprocess.Popen(  # noqa: S603 - explicit argv behind owned exec gate
                     [
@@ -210,9 +203,7 @@ class _Guardian:
         child_born = process_birth(self.child.pid)
         if child_born is None:
             raise RuntimeError("Gated child identity disappeared before launch")
-        self.tree = SubreaperProcessTree(
-            self.child.pid, self.payload.marker, subreaper=os.getpid(), born=child_born
-        )
+        self.tree = SubreaperProcessTree(self.child.pid, self.payload.marker, subreaper=os.getpid(), born=child_born)
         if self.claim is None:
             raise RuntimeError("Guardian launch is missing its lease")
         self.claim = self.claim.model_copy(
@@ -225,12 +216,9 @@ class _Guardian:
         self._persist()
         if self.store.cancelled(self.payload.job_id) or self.cancelled:
             raise InterruptedError("Queue job cancelled before native execution")
-        if not allocation_available(
-            self.payload.devices, max_used_memory_gib=self.payload.max_used_memory_gib
-        ):
+        if not allocation_available(self.payload.devices, max_used_memory_gib=self.payload.max_used_memory_gib):
             self._defer_start(
-                "GPU memory is unavailable or at least "
-                f"{self.payload.max_used_memory_gib:g} GiB at startup"
+                f"GPU memory is unavailable or at least {self.payload.max_used_memory_gib:g} GiB at startup"
             )
             return False
         if self.lease is None:
@@ -268,11 +256,7 @@ class _Guardian:
             raise RuntimeError("Deferred startup is missing its capacity lease")
         self.lease.release_verified()
         self.lease.close()
-        state: JobState = (
-            "cancelled"
-            if self.cancelled or self.store.cancelled(self.payload.job_id)
-            else "pending"
-        )
+        state: JobState = "cancelled" if self.cancelled or self.store.cancelled(self.payload.job_id) else "pending"
         self.store.update(self.payload.job_id, state, devices=())
         if state == "pending":
             self.store.set_waiting({self.payload.job_id: reason})
@@ -386,10 +370,7 @@ class _Guardian:
                 self.store.update(
                     self.payload.job_id,
                     "recovery_required",
-                    error=(
-                        f"Cleanup verification failed: {type(cleanup_error).__name__}; "
-                        "owner recovery required"
-                    ),
+                    error=(f"Cleanup verification failed: {type(cleanup_error).__name__}; owner recovery required"),
                 )
                 raise
         finally:

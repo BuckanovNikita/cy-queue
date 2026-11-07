@@ -24,9 +24,7 @@ class QueueGPUInventory:
         )
 
 
-def allocation_available(
-    devices: tuple[str, ...], *, max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB
-) -> bool:
+def allocation_available(devices: tuple[str, ...], *, max_used_memory_gib: float = DEFAULT_MAX_USED_MEMORY_GIB) -> bool:
     """Read physical memory again at startup, without a CUDA context or process scan."""
     source = GPUInventory(max_used_memory_gib=max_used_memory_gib)
     source.restrict_to(())

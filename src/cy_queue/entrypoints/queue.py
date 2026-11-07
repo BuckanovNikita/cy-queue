@@ -37,9 +37,7 @@ def _parser() -> argparse.ArgumentParser:
     parser = _QueueParser(prog="cy-queue", description=__doc__)
     parser.add_argument("--root", type=Path, help="Override the configured shared metadata root")
     commands = parser.add_subparsers(dest="action", required=True)
-    config = commands.add_parser(
-        "config", help="Inspect user queue.toml or CY_QUEUE_CONFIG without starting a queue"
-    )
+    config = commands.add_parser("config", help="Inspect user queue.toml or CY_QUEUE_CONFIG without starting a queue")
     config.add_argument("--json", action="store_true")
     submit = commands.add_parser("submit", help="Freeze and submit one CY command or Hydra sweep")
     submit.add_argument("--command", choices=("pipeline", "train"), default="pipeline")
@@ -150,9 +148,7 @@ def _resource_request(arguments: argparse.Namespace) -> ResourceRequest:
     try:
         indexes = tuple(int(part.strip()) for part in arguments.devices.split(","))
     except ValueError as error:
-        raise ValueError(
-            "--devices must contain comma-separated nonnegative CUDA indexes"
-        ) from error
+        raise ValueError("--devices must contain comma-separated nonnegative CUDA indexes") from error
     if not indexes or any(index < 0 for index in indexes) or len(set(indexes)) != len(indexes):
         raise ValueError("--devices must contain unique nonnegative CUDA indexes")
     visible = GPUInventory().visible()
@@ -224,22 +220,15 @@ class _WorkerLog:
             logger.log(
                 level,
                 "{}",
-                self.presentation.text(details, job.host_id)
-                .replace("\n", "\\n")
-                .replace("\r", "\\r"),
+                self.presentation.text(details, job.host_id).replace("\n", "\\n").replace("\r", "\\r"),
             )
         self._jobs = current
         counts = Counter(job.state for job in jobs)
         summary = " ".join(f"{state}={count}" for state, count in sorted(counts.items()))
-        active = any(
-            job.state in {"pending", "starting", "running", "cancelling", "recovery_required"}
-            for job in jobs
-        )
+        active = any(job.state in {"pending", "starting", "running", "cancelling", "recovery_required"} for job in jobs)
         now = time.monotonic()
         if self._last_heartbeat is None or now - self._last_heartbeat >= _HEARTBEAT_SECONDS:
-            logger.info(
-                "Worker heartbeat | {} | {}", "active" if active else "idle", summary or "no jobs"
-            )
+            logger.info("Worker heartbeat | {} | {}", "active" if active else "idle", summary or "no jobs")
             self._last_heartbeat = now
         logger.debug(
             "Worker poll | host={} uid={} | {}",
@@ -389,14 +378,8 @@ def _queue_operation(
             _show_job(job, presentation, as_json=arguments.json)
         case "archive" | "restore":
             jobs = service.list(visibility="all").jobs
-            targets = tuple(
-                dict.fromkeys(resolve_job_reference(jobs, ref).id for ref in arguments.job_ids)
-            )
-            view = (
-                service.archive(targets)
-                if arguments.action == "archive"
-                else service.restore(targets)
-            )
+            targets = tuple(dict.fromkeys(resolve_job_reference(jobs, ref).id for ref in arguments.job_ids))
+            view = service.archive(targets) if arguments.action == "archive" else service.restore(targets)
             if not arguments.json:
                 verb = "Archived" if arguments.action == "archive" else "Restored"
                 sys.stdout.write(f"{verb} {len(targets)} job(s)\n")
@@ -420,15 +403,11 @@ def _submit(
     values = arguments.overrides
     if values and values[0] == "--":
         values = values[1:]
-    snapshots = compose_snapshots(
-        values, _resource_request(arguments), project_root=root, command=arguments.command
-    )
+    snapshots = compose_snapshots(values, _resource_request(arguments), project_root=root, command=arguments.command)
     if arguments.label is not None:
         if not arguments.label.strip():
             raise ValueError("Job label must be nonempty")
-        snapshots = tuple(
-            snapshot.model_copy(update={"label": arguments.label}) for snapshot in snapshots
-        )
+        snapshots = tuple(snapshot.model_copy(update={"label": arguments.label}) for snapshot in snapshots)
     jobs = service.submit(snapshots)
     if arguments.json:
         sys.stdout.write(json.dumps([presentation.job(job) for job in jobs]) + "\n")
@@ -457,11 +436,7 @@ def _gpu_operation(controls: QueueGPUControlPort, arguments: argparse.Namespace)
         case "list":
             cards = controls.list()
             presentation = QueuePresentation(
-                {
-                    card.uuid: card.physical_index
-                    for card in cards
-                    if card.physical_index is not None
-                }
+                {card.uuid: card.physical_index for card in cards if card.physical_index is not None}
             )
             if arguments.json:
                 sys.stdout.write(json.dumps([presentation.gpu(card) for card in cards]) + "\n")
@@ -469,9 +444,7 @@ def _gpu_operation(controls: QueueGPUControlPort, arguments: argparse.Namespace)
                 for card in cards:
                     holds = "; ".join(f"uid={hold.owner_uid}" for hold in card.holds)
                     job = f"owned by user {card.claim.owner_uid}" if card.claim else "-"
-                    sys.stdout.write(
-                        f"{presentation.device(card.uuid)}\tholds={holds or '-'}\tjob={job}\n"
-                    )
+                    sys.stdout.write(f"{presentation.device(card.uuid)}\tholds={holds or '-'}\tjob={job}\n")
         case "disable":
             hold = controls.disable(arguments.selector)
             presentation = _selector_presentation(arguments.selector, hold.uuid)
@@ -482,9 +455,7 @@ def _gpu_operation(controls: QueueGPUControlPort, arguments: argparse.Namespace)
         case "enable":
             controls.enable(arguments.selector)
             sys.stdout.write(
-                json.dumps({"status": "hold removed"}) + "\n"
-                if arguments.json
-                else "Own GPU hold removed\n"
+                json.dumps({"status": "hold removed"}) + "\n" if arguments.json else "Own GPU hold removed\n"
             )
         case "free" | "release":
             result = controls.release(arguments.selector)
@@ -492,9 +463,7 @@ def _gpu_operation(controls: QueueGPUControlPort, arguments: argparse.Namespace)
             if arguments.json:
                 sys.stdout.write(json.dumps(presentation.freed(result)) + "\n")
             else:
-                sys.stdout.write(
-                    f"GPU {presentation.device(result.uuid)}: reservations and holds cleared\n"
-                )
+                sys.stdout.write(f"GPU {presentation.device(result.uuid)}: reservations and holds cleared\n")
         case _:
             raise ValueError("Unknown GPU control operation")
 

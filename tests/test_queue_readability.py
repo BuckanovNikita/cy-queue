@@ -133,9 +133,7 @@ def test_real_cli_readable_submit_archive_restore(tmp_path: Path) -> None:
         assert result.returncode == 0, result.stderr
         return result.stdout
 
-    submitted = run(
-        "submit", "--gpus", "1", "--label", "Old experiment", "--", "ground_truth=input.csv"
-    )
+    submitted = run("submit", "--gpus", "1", "--label", "Old experiment", "--", "ground_truth=input.csv")
     assert submitted == "Submitted Job 1 · Old experiment\n"
     original = json.loads(run("list", "--json"))["jobs"][0]
     assert original["id"] not in submitted
