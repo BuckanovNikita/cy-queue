@@ -1,4 +1,4 @@
-# cy-queue: problem and desired behavior
+# cy-queue: functionality
 
 ## Problem
 
@@ -6,13 +6,13 @@ Experiment operators share scarce GPUs and need durable scheduling without launc
 work under another user's identity, losing jobs on restart, freeing live allocations,
 or confusing successful computation with verified process cleanup.
 
-## Desired outcome
+## Function
 
 Provide a persistent CY-specific whole-GPU queue with explicit submission, owner-run
 workers, cancellation, recovery, inspection and a terminal interface. Direct
 clearml-yolo commands remain usable without installing or configuring the queue.
 
-## Required behavior
+## How scheduling works
 
 - Install compatible source versions of both distributions in one environment; enforce
   package metadata bounds and reject stale installed identity. Queue depends on CY;
@@ -51,16 +51,3 @@ admission and refresh races. [Migration](../docs/migration.md) defines drain, up
 and resubmission. The [user guide](../README.md) defines commands and configuration.
 The maintained [CY queue contract](https://github.com/BuckanovNikita/clearml-yolo/blob/master/docs/queue.md)
 defines storage eligibility, ownership, device operations and lifecycle semantics.
-
-## Acceptance
-
-Exercise persistence/restart, invalid configuration, atomic sweep validation, owner
-isolation, exact threshold boundaries, unavailable telemetry, cancelled/reused PIDs,
-worker death, lost handoff acknowledgement, generation fencing, stale refresh and
-failed cleanup. Preserve genuine lost-execution recovery and newer terminal records.
-Verify compatible source/installed metadata for both packages together.
-
-Mock NVML and process fixtures establish only their modeled behavior. Physical GPU,
-ClearML Agent/publication, multiuser and multi-host filesystem outcomes require owned
-live checks on the intended topology. Requirements here claim no completed execution.
-Development procedures remain in [development guidance](../docs/development.md).
