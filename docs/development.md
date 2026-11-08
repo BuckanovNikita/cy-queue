@@ -22,7 +22,10 @@ lockfile that resolves a nonexistent index release of CY.
 
 The routine suite uses temporary storage, controlled GPU telemetry and real owned
 subprocesses. Opt-in `ddp_gpu` tests require explicit physical devices, ClearML project,
-output evidence and authorization options exposed by `pytest --help`. The multiuser
+output evidence and authorization options exposed by `pytest --help`. By user decision
+they stay deselected and have never run on physical multi-GPU hardware, so multi-GPU
+handoff, cleanup and failure recovery are unverified; routine tests do not establish
+them. The multiuser
 harness additionally provisions temporary Unix identities; inspect its `--help` and
 ownership contract before explicit execution. Physical queued scenarios additionally require
 an existing valid `queue.toml` (or `CY_QUEUE_CONFIG`) and retain its host coordination
@@ -30,8 +33,9 @@ root so real GPU locks still coordinate with other users. They override only the
 metadata root with the scenario-owned path. Do not change host coordination to bypass
 other workloads. The multiuser harness uses controlled devices and test-owned identities.
 
-Cross-repository work follows the active CY task ledger and fresh independent
-review requirement. Keep verification results in dated evidence.
+Cross-repository work requires fresh independent review. This repository keeps no
+evidence directory; record dated verification results in the task's review record,
+such as the pull request description.
 
 ## Paired release checks
 
@@ -55,7 +59,7 @@ Run the configured static/import checks above too. The installation tests compar
 the source and installed requirements/versions; reinstall after version changes.
 Use normal resolution for acceptance, without `--no-deps`, and preserve approved
 external source revisions. Record both source SHAs, versions, resolver and queue
-integration results in dated evidence. Check the proposed version before creating
+integration results in the dated review record. Check the proposed version before creating
 or pushing a CY release tag, and recheck the final installed pair if hooks change
 either version. Incompatible bounds, stale metadata, missing current sources or
 failed/unavailable checks block delivery. Update the bounded CY requirement only
