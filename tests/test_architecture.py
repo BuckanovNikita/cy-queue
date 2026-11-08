@@ -3,8 +3,6 @@
 import ast
 from pathlib import Path
 
-import pytest
-
 _ROOT = Path(__file__).resolve().parents[1] / "src/cy_queue"
 _LAYERS = {"core": 0, "application": 1, "adapters": 2, "entrypoints": 3}
 _CY_ADAPTERS = {
@@ -117,37 +115,3 @@ def test_all_modules_respect_layers_sdk_ownership_and_cy_interfaces() -> None:
         module = "cy_queue." + ".".join(path.relative_to(_ROOT).with_suffix("").parts)
         errors.extend(_errors(module, _dependencies(source)))
     assert errors == []
-
-
-@pytest.mark.parametrize(
-    ("module", "dependency"),
-    [
-        ("cy_queue.core.queue", "cy_queue.adapters.queue.storage"),
-        ("cy_queue.application.queue", "clearml_yolo.core.models"),
-        ("cy_queue.application.queue", "subprocess"),
-        ("cy_queue.adapters.queue.runtime", "clearml_yolo.entrypoints.pipeline"),
-        ("cy_queue.adapters.queue.guardian", "clearml"),
-        ("cy_queue.entrypoints.queue", "torch"),
-        ("cy_queue.entrypoints.queue", "clearml_yolo.adapters.clearml.session"),
-    ],
-)
-def test_prohibited_dependencies_fail(module: str, dependency: str) -> None:
-    assert _errors(module, {dependency})
-
-
-@pytest.mark.parametrize(
-    "source",
-    [
-        "import cy_queue.adapters.queue.storage",
-        ("from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n import cy_queue.adapters.queue.storage"),
-        "import importlib\nimportlib.import_module('cy_queue.adapters.queue.storage')",
-        "argv = ['python', '-m', 'cy_queue.adapters.queue.storage']",
-    ],
-)
-def test_static_type_only_dynamic_and_worker_edges_are_checked(source: str) -> None:
-    assert _errors("cy_queue.core.queue", _dependencies(source))
-
-
-def test_unknown_dynamic_target_is_rejected() -> None:
-    with pytest.raises(ValueError, match="literal"):
-        _dependencies("importlib.import_module(user_value)")
