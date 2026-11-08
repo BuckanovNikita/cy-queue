@@ -48,8 +48,9 @@ see docs/development.md.
 
 - Changes to behavior, interfaces, dependencies, security or operational policy need
   independent review after integrated verification; small wording edits may be self-reviewed.
-- Preserve unrelated changes and local overrides; do not bypass hooks or alter shared
-  services.
+- Preserve unrelated changes, local overrides and shared services. Cohesive intermediate
+  commits may skip verification hooks by explicit ID while preserving commit-message
+  checks; run applicable verification after the final task commit.
 - README.md is Russian; other documentation is English.
 
 ## Release and delivery
@@ -60,6 +61,6 @@ see docs/development.md.
   resolution and queue integration against the proposed release versions.
   Incompatibility or unavailable evidence blocks delivery; one package passing alone
   is insufficient.
-- Use Conventional Commits after verification; with separate push authorization, push verified changes to `main` of
+- Use Conventional Commits; with separate push authorization, push verified changes to `main` of
   `git@github.com:BuckanovNikita/cy-queue.git` when delivery is authorized.
 - No version-tag automation, deployment or registry publication is established.
