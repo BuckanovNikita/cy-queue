@@ -61,8 +61,9 @@ external source revisions. Report both source SHAs, versions, resolver and queue
 integration results, dated, with the task. Check the proposed version before creating
 or pushing a CY release tag, and recheck the final installed pair if hooks change
 either version. Incompatible bounds, stale metadata, missing current sources or
-failed/unavailable checks block delivery. Update the bounded CY requirement only
-after checking the newly supported interfaces. Future minors are not assumed compatible.
+failed/unavailable checks block delivery. The CY requirement declares only a minimum
+compatible version; raise it when the queue depends on a newer CY interface and never add
+an upper bound.
 
 Public source delivery uses Conventional Commits on `main` and
 `git@github.com:BuckanovNikita/cy-queue.git`. Update the package version for a package
