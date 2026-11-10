@@ -52,9 +52,11 @@ changed installation identity requires resubmission. Credentials come from the o
 Request at least one whole GPU by count or exact devices, never both. Integer submission
 selectors use CUDA-visible logical order and freeze ordered physical identities.
 Explicit CPU phases stay CPU but do not create a zero-GPU queue mode. Null training
-batch remains unresolved until the actual allocation can select compatible saved CY
-capacity evidence. A sweep gets one fresh shared grouping tag, preserving explicit
-tags; ordinary single-run submission adds no group tag.
+batch remains unresolved until CY resolves its editable batch table for each allocated
+GPU, with exact or disclosed equal-or-lower-VRAM fallback and a global batch equal
+to the allocation size times the smallest selected per-GPU batch. A sweep gets one
+fresh shared grouping tag, preserving explicit tags; ordinary single-run submission
+adds no group tag.
 
 One worker per owner/root may run concurrent jobs with disjoint allocations. Select
 the earliest runnable local-host job, skipping owners without workers and jobs without

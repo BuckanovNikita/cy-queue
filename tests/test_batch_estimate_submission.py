@@ -9,19 +9,8 @@ from typing import Any
 import pytest
 from clearml_yolo.adapters.integrations import batch_resolution
 from clearml_yolo.adapters.runtime.gpu_inventory import GPUDevice
-from clearml_yolo.adapters.storage.batch_estimates import FileBatchEstimateStore
+from clearml_yolo.adapters.storage.batch_sizes import BatchSizeStore
 from clearml_yolo.application.contracts import PreparedDataset
-from clearml_yolo.core.batch_estimation import (
-    BatchSearch,
-    EstimateCase,
-    GPUHardware,
-    ModelVariant,
-    SearchSettings,
-    SyntheticWorkload,
-    TrainingProfile,
-    TrialResult,
-    select_models,
-)
 from clearml_yolo.core.models import ModelConfig
 from omegaconf import OmegaConf
 
@@ -79,55 +68,6 @@ def test_null_batch_survives_snapshot_and_worker_exec(
     assert os.environ["CUDA_VISIBLE_DEVICES"] == "GPU-assigned-b,GPU-assigned-a"
 
 
-def _profile(model: ModelVariant, devices: tuple[GPUDevice, ...]) -> TrainingProfile:
-    return TrainingProfile(
-        model=model,
-        nominal_size=(800, 800),
-        effective_size=(800, 800),
-        gpus=tuple(
-            GPUHardware(name=device.name, total_memory_bytes=device.total_memory_bytes, uuid=device.uuid)
-            for device in devices
-        ),
-        dependencies={"fixture": "1"},
-        precision="fixture",
-        compilation=False,
-        optimizers=("AdamW",),
-        accumulation="fixed:1",
-        ema=True,
-        augmentation="fixture",
-        implementation_revision="fixture",
-    )
-
-
-def _case(profile: TrainingProfile, ceiling: int) -> EstimateCase:
-    settings = SearchSettings(max_global_batch=ceiling)
-    search = BatchSearch.start(profile, settings)
-    while search.next_batch is not None:
-        search = search.observe(
-            TrialResult(
-                trial_id=f"fixture-{len(search.trials)}",
-                status="success",
-                global_batch=search.next_batch,
-                actual_global_batch=search.next_batch,
-                peak_memory_bytes=(100,) * profile.world_size,
-                warmup_steps=settings.warmup_steps,
-                measured_steps=settings.measured_steps,
-                validation_steps=1,
-                optimizer_paths=profile.optimizers,
-            )
-        )
-    return EstimateCase(
-        profile=profile,
-        workload=SyntheticWorkload(),
-        settings=settings,
-        status=search.status,
-        global_batch=search.global_batch,
-        per_gpu_batch=search.per_gpu_batch,
-        trials=search.trials,
-        created_at="fixture",
-    )
-
-
 def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_null(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -144,17 +84,19 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
         GPUDevice(
             index=index,
             uuid=f"GPU-assigned-{index}",
-            name="fixture",
-            total_memory_bytes=1000,
+            name=f"fixture-{index}",
+            total_memory_bytes=16 * 1024**3,
             used_memory_bytes=0,
             utilization=0,
         )
         for index in range(2)
     )
-    model = select_models(("fcos/resnet50_fpn",))[0]
-    store = FileBatchEstimateStore()
-    store.save(_case(_profile(model, assigned[:1]), 32))
-    store.save(_case(_profile(model, assigned), 16))
+    store = BatchSizeStore()
+    store.path.parent.mkdir(parents=True, exist_ok=True)
+    store.path.write_text(
+        "fixture-0 [16 GiB]:\n  800:\n    fcos/resnet50_fpn: 32\n"
+        "fixture-1 [16 GiB]:\n  800:\n    fcos/resnet50_fpn: 8\n"
+    )
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"class_names": {"0": "class"}, "images": [{"split": "train", "boxes": 2}]}))
     prepared = PreparedDataset(
@@ -164,16 +106,8 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
         dataset_format="coco",
         artifacts=[],
     )
-    observed: list[tuple[str, ...]] = []
-
-    def profile(selected: ModelVariant, _size: int, devices: tuple[GPUDevice, ...], **_kwargs: Any) -> TrainingProfile:
-        observed.append(tuple(device.uuid for device in devices))
-        return _profile(selected, devices)
-
     monkeypatch.setattr(batch_resolution, "discover_gpus", lambda: assigned)
-    monkeypatch.setattr(batch_resolution, "training_profile", profile)
     resolved, provenance = batch_resolution.resolve_native_batch(requested, prepared, None)
-    assert observed == [("GPU-assigned-0", "GPU-assigned-1")]
     assert resolved.train.batch == 16
     assert resolved.train.device == [0, 1]
     assert requested.train.batch is None
@@ -181,3 +115,10 @@ def test_worker_resolves_the_allocated_gpu_count_without_replacing_requested_nul
     assert provenance is not None
     assert provenance["global_batch"] == 16
     assert provenance["per_gpu_batch"] == 8
+    assert provenance["origin"] == "batch_sizes_table"
+    assert provenance["table_digest"] == store.load().digest
+    entries = provenance["selected_entries"]
+    assert [entry["target_gpu"]["uuid"] for entry in entries] == ["GPU-assigned-0", "GPU-assigned-1"]
+    assert [entry["resolved_per_gpu_batch"] for entry in entries] == [32, 8]
+    assert all(entry["fallback"] is False for entry in entries)
+    assert all(entry["entry"]["origin"] == "manual" for entry in entries)

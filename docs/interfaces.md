@@ -13,13 +13,16 @@ CY interface.
 
 ## Batch evidence and model preparation
 
-Submission preserves `batch=null` until allocation-aware worker resolution. Saved
-estimate coverage does not promise compatibility with the eventual allocation, recipe
-or workload. Compatible forced estimates may be used and must remain visibly
-`forced/background-sensitive` in training provenance. Every participating reader must
-support the catalogue format; follow coordinated [migration](migration.md) when that
-format or installation identity changes. The queue does not compose or forward the
-standalone estimator's `--force` option.
+Submission preserves `batch=null` until allocation-aware worker resolution. CY resolves
+its editable `batch-sizes.yaml` table separately for each assigned GPU and uses the
+allocation size times the smallest selected per-GPU batch. Exact GPU name/capacity
+entries take precedence over equal-or-lower-VRAM fallback; recipe, class count and
+workload do not gate training lookup. Training provenance retains the table digest,
+selected entries and fallback sources without claiming manual or fallback values are
+measurements on the target GPU. Source measurements retain forced/background-sensitive
+and numerical-limit provenance. Internal JSON evidence is not a training fallback.
+The queue does not compose or forward the standalone estimator's `--force` option.
+Follow coordinated [migration](migration.md) when installation identity changes.
 
 Queued DEIMv2 `l`/`x` pretrained execution may prepare a gated Hugging Face DINOv3
 checkpoint inside the admitted process. It inherits the owner's credentials and CY
