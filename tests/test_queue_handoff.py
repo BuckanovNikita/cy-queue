@@ -447,10 +447,12 @@ with execution_lifecycle() as supervised:
             (tmp_path / "owner.finish").touch()
         wait_for(tmp_path / "publication.done")
         deadline = time.monotonic() + 10
-        while (
-            store.view().jobs[0].state not in {"completed", "cancelled", "failed", "recovery_required"}
-            or processes.reserved() != {"GPU-a", "GPU-c"}
-        ):
+        while store.view().jobs[0].state not in {
+            "completed",
+            "cancelled",
+            "failed",
+            "recovery_required",
+        } or processes.reserved() != {"GPU-a", "GPU-c"}:
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.02)
