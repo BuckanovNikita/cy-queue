@@ -71,10 +71,7 @@ def test_guardian_rechecks_memory_before_workload_exec(
         queue_memory.write_text(json.dumps({"GPU-test": limit - 1}), encoding="utf-8")
         assert processes.start(store.view().jobs[0], ("GPU-test",))
         deadline = time.monotonic() + 10
-        while (
-            store.view().jobs[0].state not in {"completed", "failed", "recovery_required"}
-            or processes.reserved()
-        ):
+        while store.view().jobs[0].state not in {"completed", "failed", "recovery_required"} or processes.reserved():
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.02)
