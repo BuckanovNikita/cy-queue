@@ -182,9 +182,12 @@ def test_free_keeps_running_job_and_sibling_lease_then_rechecks_next_job(
     )
     controls = GPUControls(processes.pool, physical_uuids=lambda: ("GPU-a", "GPU-b"))
 
-    def wait_for_state(job_id: str, state: str) -> None:
+    def wait_for_state(job_id: str, state: str, expected_reservations: set[str]) -> None:
         deadline = time.monotonic() + 10
-        while next(job for job in store.view().jobs if job.id == job_id).state != state:
+        while (
+            next(job for job in store.view().jobs if job.id == job_id).state != state
+            or processes.reserved() != expected_reservations
+        ):
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.02)
@@ -201,10 +204,10 @@ def test_free_keeps_running_job_and_sibling_lease_then_rechecks_next_job(
         assert processes.start(jobs[1], ("GPU-a",))
         assert processes.reserved() == {"GPU-a", "GPU-b"}
         (tmp_path / "first.finish").touch()
-        wait_for_state(jobs[0].id, "completed")
+        wait_for_state(jobs[0].id, "completed", {"GPU-a"})
         assert processes.reserved() == {"GPU-a"}
         (tmp_path / "second.finish").touch()
-        wait_for_state(jobs[1].id, "completed")
+        wait_for_state(jobs[1].id, "completed", set())
         assert not processes.reserved()
     finally:
         for label in ("first", "second"):
@@ -263,11 +266,10 @@ def test_cli_configuration_controls_admission_and_guardian_startup(
             with processes.worker_registration():
                 assert service.tick() == 1
                 deadline = time.monotonic() + 10
-                while service.storage.view().jobs[0].state not in {
-                    "completed",
-                    "failed",
-                    "recovery_required",
-                }:
+                while (
+                    service.storage.view().jobs[0].state not in {"completed", "failed", "recovery_required"}
+                    or processes.reserved()
+                ):
                     assert time.monotonic() < deadline
                     processes.refresh()
                     time.sleep(0.02)

@@ -345,7 +345,7 @@ while not ready.is_file() or not ready.read_text():
         assert processes.start(job, ("GPU-test",))
         rank_pid = int(_wait_for(ready))
         deadline = time.monotonic() + 10
-        while store.view().jobs[0].state not in {"completed", "failed", "recovery_required"}:
+        while store.view().jobs[0].state not in {"completed", "failed", "recovery_required"} or processes.reserved():
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.05)
@@ -423,7 +423,7 @@ with processes.worker_registration():
         assert processes.reserved() == {"GPU-test"}
         store.cancel(job.id)
         deadline = time.monotonic() + 10
-        while store.view().jobs[0].state != "cancelled":
+        while store.view().jobs[0].state != "cancelled" or processes.reserved():
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.05)
@@ -507,7 +507,7 @@ def test_repeated_guardian_signals_hold_capacity_until_ignoring_child_is_reaped(
         assert process_birth(native_pid) is not None
         assert processes.reserved() == {"GPU-test"}
         deadline = time.monotonic() + 10
-        while store.view().jobs[0].state != "cancelled":
+        while store.view().jobs[0].state != "cancelled" or processes.reserved():
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.05)
