@@ -87,7 +87,8 @@ def _job(directory: Path, script: str) -> Iterator[tuple[NFSQueueStore, QueuePro
 
 def _wait_cancelled(store: NFSQueueStore, processes: QueueProcesses, timeout: float = 10) -> None:
     deadline = time.monotonic() + timeout
-    while store.view().jobs[0].state != "cancelled":
+    # Terminal publication precedes verified lease release.
+    while store.view().jobs[0].state != "cancelled" or processes.reserved():
         assert time.monotonic() < deadline
         processes.refresh()
         time.sleep(0.02)

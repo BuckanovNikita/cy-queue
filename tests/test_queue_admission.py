@@ -53,17 +53,28 @@ def test_guardian_rechecks_memory_before_workload_exec(
     )
     try:
         assert not processes.start(job, ("GPU-test",))
+        expected_reason = f"GPU memory is unavailable or at least {threshold:g} GiB at startup"
+        deadline = time.monotonic() + 10
+        # Pending state and its diagnostic are separate durable publications.
+        while True:
+            observed = store.view().jobs[0]
+            if observed.state == "pending" and observed.waiting_reason == expected_reason:
+                break
+            assert time.monotonic() < deadline
+            processes.refresh()
+            time.sleep(0.02)
         assert store.view().jobs[0].state == "pending"
-        assert store.view().jobs[0].waiting_reason == (
-            f"GPU memory is unavailable or at least {threshold:g} GiB at startup"
-        )
+        assert store.view().jobs[0].waiting_reason == expected_reason
         assert not started.exists()
         assert not processes.reserved()
         # A later attempt uses a fresh measurement, with the strict boundary.
         queue_memory.write_text(json.dumps({"GPU-test": limit - 1}), encoding="utf-8")
         assert processes.start(store.view().jobs[0], ("GPU-test",))
         deadline = time.monotonic() + 10
-        while store.view().jobs[0].state not in {"completed", "failed", "recovery_required"}:
+        while (
+            store.view().jobs[0].state not in {"completed", "failed", "recovery_required"}
+            or processes.reserved()
+        ):
             assert time.monotonic() < deadline
             processes.refresh()
             time.sleep(0.02)
