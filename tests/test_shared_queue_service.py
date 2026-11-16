@@ -208,7 +208,7 @@ def test_one_owner_worker_runs_disjoint_guardians_concurrently(tmp_path: Path) -
             assert processes.reserved() == {"GPU-a", "GPU-b"}
             assert all(process_birth(pid) is not None for pid in pids)
             service.cancel(jobs[0].id)
-            while store.view().jobs[0].state != "cancelled":
+            while store.view().jobs[0].state != "cancelled" or processes.reserved() != {"GPU-b"}:
                 assert time.monotonic() < deadline
                 processes.refresh()
                 time.sleep(0.02)
@@ -216,7 +216,7 @@ def test_one_owner_worker_runs_disjoint_guardians_concurrently(tmp_path: Path) -
             assert process_birth(pids[1]) is not None
             assert processes.reserved() == {"GPU-b"}
             service.cancel(jobs[1].id)
-            while store.view().jobs[1].state != "cancelled":
+            while store.view().jobs[1].state != "cancelled" or processes.reserved():
                 assert time.monotonic() < deadline
                 processes.refresh()
                 time.sleep(0.02)
