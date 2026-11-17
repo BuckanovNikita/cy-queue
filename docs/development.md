@@ -64,11 +64,12 @@ metadata, missing current sources or failed/unavailable checks block merge and d
 The CY requirement declares only a minimum compatible version; raise it when the queue
 depends on a newer CY interface and never add an upper bound.
 
-Each repository's release job sets the next version only after the merge and changes
-nothing else. The proposed version is the one that job will compute: the current version
-when the merged commits release nothing, otherwise the next patch or minor version. Run
-the checks on the final PR head, based on the current `main`, together with the other
-repository's current default branch, and repeat them if either changes before the merge.
+Each repository's release job runs only after the merge and changes only version
+metadata and the changelog. The proposed version is the one that job will compute: the
+current version when the merged commits release nothing, otherwise the next patch or
+minor version. Run the checks on the final PR head with the current `main` included,
+together with the other repository's current default branch. If either changes before
+the merge, reassess the evidence and repeat the checks that the change affects.
 After a release in either repository, pull it, reinstall the changed package and repeat
 the commands above in every environment that stays in use; its installed metadata is
 stale until then.
@@ -99,9 +100,9 @@ nothing, and a run without a new version succeeds without creating a commit or t
 The tool reads the PR title of a squash merge and the branch commit messages listed in
 its body; a merge commit exposes the branch commits themselves. The highest type among
 them decides the version, so give the PR title and every branch commit an accurate
-Conventional Commit type. Use `fix` or `feat` for every change to the installed package,
-its requirements or its metadata, so that the change receives its own version. Never
-edit `project.version` or `CHANGELOG.md` by hand.
+Conventional Commit type. A change to installed behavior, requirements or package
+metadata is a `fix`, `perf` or `feat`, so that it receives its own version. Never edit
+`project.version` or `CHANGELOG.md` by hand.
 
 `scripts/release.py` runs the tool and requires exactly one new commit that changes only
 `pyproject.toml` and `CHANGELOG.md`, with an annotated tag on it, and a version above
@@ -124,5 +125,6 @@ successful no-op. Never overwrite an existing tag.
 
 After a release, pull `main` and reinstall the queue before running the suite: the
 installation tests compare `project.version` with the installed metadata; see
-[paired release checks](#paired-release-checks). When a release is produced, record the workflow run, the source and release SHAs, the version and the
-confirmed remote tag identity in the Linear issue.
+[paired release checks](#paired-release-checks). When a release is produced, record the
+workflow run, the source and release SHAs, the version and the confirmed remote tag
+identity in the Linear issue.

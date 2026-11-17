@@ -68,7 +68,8 @@ see docs/development.md.
   Delivery is the human merge of a PR: complete the checks before it. Incompatibility
   or unavailable evidence blocks merge and delivery; one package passing alone is
   insufficient.
-- Use Conventional Commits, including PR titles. Agents may commit task-owned changes,
+- Use Conventional Commits, including PR titles; their types decide the released
+  version. Agents may commit task-owned changes,
   push task branches and open PRs against `main` of `BuckanovNikita/cy-queue`; humans
   merge. Never push `main` or merge into it locally. Explicit no-commit/no-push limits
   take precedence.
