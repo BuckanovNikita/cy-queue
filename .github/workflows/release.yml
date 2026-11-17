@@ -11,6 +11,8 @@ permissions:
 concurrency:
   group: release-main
   cancel-in-progress: false
+  # Every closed PR enters this group; keep a pending release when another run queues.
+  queue: max
 
 jobs:
   release:

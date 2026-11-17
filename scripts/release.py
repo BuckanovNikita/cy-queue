@@ -47,9 +47,10 @@ def validate_release(base: str, released: str) -> tuple[str, str]:
         raise ValueError(f"unexpected release paths: {sorted(changed)}")
     previous = tomllib.loads(output("git", "show", f"{base}:pyproject.toml"))["project"]["version"]
     version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
-    # Without its baseline tag semantic-release restarts from the first commit.
+    # Without its baseline tag semantic-release restarts from the first commit; a
+    # hand-edited project.version runs ahead of the tags.
     if version_key(version) <= version_key(previous):
-        raise ValueError(f"release {version} does not advance {previous}; check the baseline tag")
+        raise ValueError(f"release {version} does not advance {previous}; check the latest tag and project.version")
     tag = f"v{version}"
     if output("git", "cat-file", "-t", f"refs/tags/{tag}") != "tag":
         raise ValueError("release tag must be annotated")
@@ -90,7 +91,7 @@ def release() -> None:
 def main() -> int:
     try:
         release()
-    except (OSError, ValueError, subprocess.CalledProcessError) as exc:
+    except (KeyError, OSError, TypeError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"release: {exc}", file=sys.stderr)
         return 1
     return 0
