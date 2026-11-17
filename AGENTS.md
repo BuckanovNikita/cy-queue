@@ -48,6 +48,10 @@ see docs/development.md.
 
 ## Project workflow
 
+- Linear team `SIP`, project `cy-queue`, owns per-change plans, acceptance criteria and
+  status. GitHub PRs own review and delivery; follow the
+  [ticket workflow](docs/agents/issue-tracker.md). The product specification and
+  interface contracts stay in this repository and change in the PR that changes behavior.
 - Changes to behavior, interfaces, dependencies, security or operational policy need
   independent review after integrated verification; small wording edits may be self-reviewed.
 - Preserve unrelated changes, local overrides and shared services. Cohesive intermediate
@@ -61,11 +65,24 @@ see docs/development.md.
   [paired release checks](docs/development.md#paired-release-checks) on the latest
   versions of both together: source and installed metadata, normal dependency
   resolution and queue integration against the proposed release versions.
-  Incompatibility or unavailable evidence blocks delivery; one package passing alone
-  is insufficient.
-- Use Conventional Commits; with separate push authorization, push verified changes to `main` of
-  `git@github.com:BuckanovNikita/cy-queue.git` when delivery is authorized.
-- No version-tag automation, deployment or registry publication is established.
+  Delivery is the human merge of a PR: complete the checks before it. Incompatibility
+  or unavailable evidence blocks merge and delivery; one package passing alone is
+  insufficient.
+- Use Conventional Commits, including PR titles; their types decide the released
+  version. Agents may commit task-owned changes,
+  push task branches and open PRs against `main` of `BuckanovNikita/cy-queue`; humans
+  merge. Never push `main` or merge into it locally. Explicit no-commit/no-push limits
+  take precedence.
+- A human merge into `main` authorizes the automatic
+  [release](docs/development.md#delivery-and-releases): a version commit and an annotated
+  `v{version}` tag. Never edit `project.version` or `CHANGELOG.md` by hand. No
+  deployment, GitHub Release or registry publication is established.
+
+## Agent skills
+
+- Issue tracker: [docs/agents/issue-tracker.md](docs/agents/issue-tracker.md).
+- Triage labels: [docs/agents/triage-labels.md](docs/agents/triage-labels.md).
+- Domain docs: [docs/agents/domain.md](docs/agents/domain.md).
 
 ## Specification rewrites
 

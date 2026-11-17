@@ -39,3 +39,28 @@ enable_error_code = ["deprecated", "exhaustive-match", "explicit-override", "ign
 testpaths = ["tests"]
 addopts = ["--strict-markers", "--strict-config"]
 markers = ["gpu_controls: host-wide GPU holds and manual reservation recovery", "ddp_gpu: opt-in real multi-GPU direct/queued native pipeline acceptance"]
+
+[tool.semantic_release]
+commit_parser = "conventional"
+version_toml = ["pyproject.toml:project.version"]
+tag_format = "v{version}"
+allow_zero_version = true
+major_on_zero = false
+commit_message = "chore(release): {version}"
+no_git_verify = false
+
+[tool.semantic_release.branches.main]
+match = "^main$"
+prerelease = false
+
+[tool.semantic_release.remote]
+ignore_token_for_push = true
+
+[tool.semantic_release.changelog]
+mode = "init"
+exclude_commit_patterns = ['^chore\(release\):']
+
+[tool.semantic_release.changelog.default_templates]
+changelog_file = "CHANGELOG.md"
+output_format = "md"
+mask_initial_release = false
