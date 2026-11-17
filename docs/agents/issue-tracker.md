@@ -41,10 +41,11 @@ the existing SSH remote, and task-owned branches; never deliver by merging local
 precedence.
 
 Human merges to `main` authorize automatic version commits and annotated tags through
-the [release workflow](../development.md#delivery-and-releases). A squash merge takes its
-commit message from the PR title, and that message decides the version: give the PR a
-Conventional Commit title of the intended type. Never edit `project.version` or
-`CHANGELOG.md` by hand. Complete verification, independent review and the
+the [release workflow](../development.md#delivery-and-releases). The PR title and the
+branch commit messages decide the version: give each an accurate Conventional Commit
+type, with `fix` or `feat` for every change to the installed package. Never edit
+`project.version` or `CHANGELOG.md` by hand. After pushing a task branch, confirm that the
+remote branch points at the verified commit. Complete verification, independent review and the
 [paired release checks](../development.md#paired-release-checks) before merge; record
 the workflow result and remote tag identity in the linked issue when a release is produced.
 

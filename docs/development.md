@@ -59,14 +59,19 @@ Run the configured static/import checks above too. The installation tests compar
 the source and installed requirements/versions; reinstall after version changes.
 Use normal resolution for acceptance, without `--no-deps`, and preserve approved
 external source revisions. Report both source SHAs, versions, resolver and queue
-integration results, dated, in the Linear issue and the PR. Each repository's release
-job sets its next version only after the merge, so check the proposed version before
-the human merge of a releasing PR in either repository: the queue's CY requirement must
-contain the proposed CY version. Repeat the checks if either PR head, default branch or
-proposed version changes before the merge. Incompatible bounds, stale metadata, missing
-current sources or failed/unavailable checks block merge and delivery. The CY requirement
-declares only a minimum compatible version; raise it when the queue depends on a newer CY
-interface and never add an upper bound.
+integration results, dated, in the Linear issue and the PR. Incompatible bounds, stale
+metadata, missing current sources or failed/unavailable checks block merge and delivery.
+The CY requirement declares only a minimum compatible version; raise it when the queue
+depends on a newer CY interface and never add an upper bound.
+
+Each repository's release job sets the next version only after the merge and changes
+nothing else. The proposed version is the one that job will compute: the current version
+when the merged commits release nothing, otherwise the next patch or minor version. Run
+the checks on the final PR head, based on the current `main`, together with the other
+repository's current default branch, and repeat them if either changes before the merge.
+After a release in either repository, pull it, reinstall the changed package and repeat
+the commands above in every environment that stays in use; its installed metadata is
+stale until then.
 
 CY's `paired-check` task runs the same pair in a temporary environment; it needs a clean
 queue checkout that contains the latest remote `main`.
@@ -76,27 +81,34 @@ queue checkout that contains the latest remote `main`.
 Work is planned in Linear and delivered through GitHub PRs; follow the
 [ticket workflow](agents/issue-tracker.md). Agents commit task-owned changes, push task
 branches to `git@github.com:BuckanovNikita/cy-queue.git` and open PRs against `main`;
-humans merge. Complete verification, independent review and the paired release checks
+humans merge. After pushing a task branch, confirm that the remote branch points at the
+verified commit. Complete verification, independent review and the paired release checks
 before the merge.
 
-A human merge authorizes an automatic release; there is no local release command. The
-[release workflow](../.github/workflows/release.yml) handles closed PR events only when
-the PR was merged into `main`. Unmerged closures, ordinary pushes and tag creation do
-not release. Jobs are serialized without canceling a running release. Each job reads the
-current `main` tip with full history and tags; closely spaced merges may share one release.
+A human merge authorizes an automatic release; do not run the release script locally.
+The [release workflow](../.github/workflows/release.yml) handles closed PR events only
+when the PR was merged into `main`. Unmerged closures, ordinary pushes and tag creation
+do not release. Runs wait in a queue, one at a time, without canceling a running or
+pending release. Each job reads the current `main` tip with full history and tags;
+closely spaced merges may share one release.
 
 Python Semantic Release computes the version from the Conventional Commits since the
 last `v{version}` tag: `fix` and `perf` raise the patch version, `feat` and, while the
 major version is 0, a breaking change raise the minor version. Other types release
-nothing, and a run without a new version succeeds without creating a commit or tag. A
-squash merge takes its commit message from the PR title, so the title must be a
-Conventional Commit of the intended type. Never edit `project.version` or `CHANGELOG.md`
-by hand.
+nothing, and a run without a new version succeeds without creating a commit or tag.
+The tool reads the PR title of a squash merge and the branch commit messages listed in
+its body; a merge commit exposes the branch commits themselves. The highest type among
+them decides the version, so give the PR title and every branch commit an accurate
+Conventional Commit type. Use `fix` or `feat` for every change to the installed package,
+its requirements or its metadata, so that the change receives its own version. Never
+edit `project.version` or `CHANGELOG.md` by hand.
 
 `scripts/release.py` runs the tool and requires exactly one new commit that changes only
 `pyproject.toml` and `CHANGELOG.md`, with an annotated tag on it, and a version above
-the previous `project.version`. A missing baseline tag makes the tool restart from the
-first commit; the release then fails without publishing. It then pushes the
+the previous `project.version`. Without the annotated tag of the latest release the tool
+restarts from the first commit, and a hand-edited `project.version` runs ahead of the
+tags; in both cases the release fails without publishing until the tag is restored on its
+release commit or the edit is reverted. The script then pushes the
 commit and the tag atomically with explicit refs, rejects a moved remote tip or an
 existing tag, and confirms the published ref identities. It never force-pushes or follows
 unrelated tags. A release is that commit and tag only: no GitHub Release object, asset,
@@ -111,6 +123,6 @@ remote refs before rerunning the workflow; an already published release reruns a
 successful no-op. Never overwrite an existing tag.
 
 After a release, pull `main` and reinstall the queue before running the suite: the
-installation tests compare `project.version` with the installed metadata. When a release
-is produced, record the workflow run, the source and release SHAs, the version and the
+installation tests compare `project.version` with the installed metadata; see
+[paired release checks](#paired-release-checks). When a release is produced, record the workflow run, the source and release SHAs, the version and the
 confirmed remote tag identity in the Linear issue.
