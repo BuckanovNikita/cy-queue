@@ -94,7 +94,9 @@ Conventional Commit of the intended type. Never edit `project.version` or `CHANG
 by hand.
 
 `scripts/release.py` runs the tool and requires exactly one new commit that changes only
-`pyproject.toml` and `CHANGELOG.md`, with an annotated tag on it. It then pushes the
+`pyproject.toml` and `CHANGELOG.md`, with an annotated tag on it, and a version above
+the previous `project.version`. A missing baseline tag makes the tool restart from the
+first commit; the release then fails without publishing. It then pushes the
 commit and the tag atomically with explicit refs, rejects a moved remote tip or an
 existing tag, and confirms the published ref identities. It never force-pushes or follows
 unrelated tags. A release is that commit and tag only: no GitHub Release object, asset,

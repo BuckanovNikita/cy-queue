@@ -35,13 +35,21 @@ def require_clean() -> None:
         raise ValueError("release requires main checked out")
 
 
+def version_key(version: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in version.split("."))
+
+
 def validate_release(base: str, released: str) -> tuple[str, str]:
     if output("git", "rev-list", "--parents", "-n", "1", released) != f"{released} {base}":
         raise ValueError("semantic-release must create exactly one commit on the selected source")
     changed = set(output("git", "diff", "--name-only", base, released).splitlines())
     if not changed <= RELEASE_PATHS or "pyproject.toml" not in changed:
         raise ValueError(f"unexpected release paths: {sorted(changed)}")
+    previous = tomllib.loads(output("git", "show", f"{base}:pyproject.toml"))["project"]["version"]
     version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+    # Without its baseline tag semantic-release restarts from the first commit.
+    if version_key(version) <= version_key(previous):
+        raise ValueError(f"release {version} does not advance {previous}; check the baseline tag")
     tag = f"v{version}"
     if output("git", "cat-file", "-t", f"refs/tags/{tag}") != "tag":
         raise ValueError("release tag must be annotated")
