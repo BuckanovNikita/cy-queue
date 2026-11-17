@@ -34,12 +34,13 @@ metadata root with the scenario-owned path. Do not change host coordination to b
 other workloads. The multiuser harness uses controlled devices and test-owned identities.
 
 Cross-repository work requires fresh independent review. Report dated verification
-results with the task; this repository keeps no evidence directory.
+results in the Linear issue and the PR; this repository keeps no evidence directory.
 
 ## Paired release checks
 
 Before every release or delivery of **either** repository, verify the latest CY and
-cy-queue source revisions together, including the proposed release versions. Fetch
+cy-queue source revisions together, including the proposed release versions. Delivery
+is the human merge of a PR, so complete these checks before that merge. Fetch
 both remotes, inspect their default branches/tags and preserve unrelated local work;
 do not assume a stale sibling checkout or installed metadata represents the latest.
 Coordinate workers and drain active jobs using [migration](migration.md) before
@@ -58,15 +59,56 @@ Run the configured static/import checks above too. The installation tests compar
 the source and installed requirements/versions; reinstall after version changes.
 Use normal resolution for acceptance, without `--no-deps`, and preserve approved
 external source revisions. Report both source SHAs, versions, resolver and queue
-integration results, dated, with the task. Check the proposed version before creating
-or pushing a CY release tag, and recheck the final installed pair if hooks change
-either version. Incompatible bounds, stale metadata, missing current sources or
-failed/unavailable checks block delivery. The CY requirement declares only a minimum
-compatible version; raise it when the queue depends on a newer CY interface and never add
-an upper bound.
+integration results, dated, in the Linear issue and the PR. Each repository's release
+job sets its next version only after the merge, so check the proposed version before
+the human merge of a releasing PR in either repository: the queue's CY requirement must
+contain the proposed CY version. Repeat the checks if either PR head, default branch or
+proposed version changes before the merge. Incompatible bounds, stale metadata, missing
+current sources or failed/unavailable checks block merge and delivery. The CY requirement
+declares only a minimum compatible version; raise it when the queue depends on a newer CY
+interface and never add an upper bound.
 
-Public source delivery uses Conventional Commits on `main` and
-`git@github.com:BuckanovNikita/cy-queue.git`. Update the package version for a package
-fix, verify and review the pair, commit only task-owned changes, then, with separate push authorization, push the
-authorized branch and verify remote identity. There is no version-tag automation,
-deployment, GitHub Release object, asset upload or package registry publication.
+CY's `paired-check` task runs the same pair in a temporary environment; it needs a clean
+queue checkout that contains the latest remote `main`.
+
+## Delivery and releases
+
+Work is planned in Linear and delivered through GitHub PRs; follow the
+[ticket workflow](agents/issue-tracker.md). Agents commit task-owned changes, push task
+branches to `git@github.com:BuckanovNikita/cy-queue.git` and open PRs against `main`;
+humans merge. Complete verification, independent review and the paired release checks
+before the merge.
+
+A human merge authorizes an automatic release; there is no local release command. The
+[release workflow](../.github/workflows/release.yml) handles closed PR events only when
+the PR was merged into `main`. Unmerged closures, ordinary pushes and tag creation do
+not release. Jobs are serialized without canceling a running release. Each job reads the
+current `main` tip with full history and tags; closely spaced merges may share one release.
+
+Python Semantic Release computes the version from the Conventional Commits since the
+last `v{version}` tag: `fix` and `perf` raise the patch version, `feat` and, while the
+major version is 0, a breaking change raise the minor version. Other types release
+nothing, and a run without a new version succeeds without creating a commit or tag. A
+squash merge takes its commit message from the PR title, so the title must be a
+Conventional Commit of the intended type. Never edit `project.version` or `CHANGELOG.md`
+by hand.
+
+`scripts/release.py` runs the tool and requires exactly one new commit that changes only
+`pyproject.toml` and `CHANGELOG.md`, with an annotated tag on it. It then pushes the
+commit and the tag atomically with explicit refs, rejects a moved remote tip or an
+existing tag, and confirms the published ref identities. It never force-pushes or follows
+unrelated tags. A release is that commit and tag only: no GitHub Release object, asset,
+package, deployment or registry publication.
+
+The job needs the repository-scoped `GITHUB_TOKEN` with `contents: write` and repository
+rules that permit its commit on `main`. If rules block it, arrange explicit release-bot
+authorization without weakening human branch protections. A local rehearsal is not
+evidence of GitHub permissions. An atomically rejected push leaves both remote refs
+unchanged. A connection failure can leave publication status uncertain: inspect the
+remote refs before rerunning the workflow; an already published release reruns as a
+successful no-op. Never overwrite an existing tag.
+
+After a release, pull `main` and reinstall the queue before running the suite: the
+installation tests compare `project.version` with the installed metadata. When a release
+is produced, record the workflow run, the source and release SHAs, the version and the
+confirmed remote tag identity in the Linear issue.
