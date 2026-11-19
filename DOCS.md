@@ -196,5 +196,5 @@ ownership evidence; a new root cannot bypass live reservations.
 ## History
 
 The full pre-compression documents are in git at commit `9bcd8fa`; read one with
-`git show 9bcd8fa:<path>`. Removed top-level paths: `GLOSSARY.md`, `specs/`
+`git show 9bcd8fa:<path>`. Removed top-level paths: `CLAUDE.md`, `GLOSSARY.md`, `specs/`
 (`baseline.md`), `docs/` (`development.md`, `interfaces.md`, `migration.md`, `agents/`).
