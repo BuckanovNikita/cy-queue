@@ -30,7 +30,7 @@ uv pip check --python /path/to/environment/bin/python
 а метаданные editable-установок обновятся вместе с версиями исходников. Допустимый
 диапазон CY указан в `pyproject.toml`. При запуске через окружение CY используйте
 `uv run --frozen --no-sync cy-queue ...`, чтобы синхронизация не удалила отдельный пакет.
-Перед обновлением действующей очереди выполните [процедуру остановки](docs/migration.md).
+Перед обновлением действующей очереди выполните [процедуру остановки](DOCS.md#operations-coordinated-upgrade-and-rollback).
 
 Для изолированной сети заранее подготовьте все зависимости в доступном локальном
 индексе или окружении. Очередь не устанавливает зависимости и не меняет их исходники.
@@ -89,7 +89,7 @@ cy-queue tui
 владение, отмена, восстановление и подтверждённая передача GPU сохраняют прежние
 контракты CY. Успех вычисления не доказывает завершение очистки процессов.
 
-- [Обновление без потери записей](docs/migration.md)
-- [Граница CY и очереди](docs/interfaces.md)
-- [Разработка и проверки](docs/development.md)
+- [Обновление без потери записей](DOCS.md#operations-coordinated-upgrade-and-rollback)
+- [Граница CY и очереди](DOCS.md#wire-protocols-and-cy-interfaces)
+- [Разработка и проверки](AGENTS.md#checks)
 - [Контракт операций CY](https://github.com/BuckanovNikita/clearml-yolo/blob/master/docs/queue.md)
