@@ -1,4 +1,4 @@
-# Native Ruff configuration; checks are described in docs/development.md.
+# Native Ruff configuration; checks are listed in AGENTS.md ("Checks").
 line-length = 120
 target-version = "py312"
 src = ["src", "tests"]
