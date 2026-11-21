@@ -83,7 +83,7 @@
 | `request` | объект | [запрос GPU](../../GLOSSARY.md#gpu-request): `gpus` — число GPU или `null`; `devices` — список GPU по порядку или `null`. Заполнено ровно одно из двух |
 | `submitted_at` | число | время постановки в очередь, Unix time в секундах |
 | `submission_sequence` | число | номер `<N>` из `job-<N>` |
-| `updated_at` | число | время последней смены состояния при запуске, завершении или восстановлении задания, Unix time; `0`, пока задание не запускалось. `cancel` задания `pending`, причина ожидания и прогресс его не меняют |
+| `updated_at` | число | время, когда worker или guardian последний раз записал состояние задания (запуск, завершение, перевод в `recovery_required`), Unix time; `0`, пока задание не запускалось. Его не меняют `cancel` (ни для `pending`, ни при переводе в `cancelling`), `recover`, причина ожидания и прогресс |
 | `state` | строка | [состояние](../commands/list.md): `pending`, `starting`, `running`, `cancelling`, `completed`, `failed`, `cancelled`, `recovery_required` |
 | `revision` | число | счётчик изменений этой записи задания (не путать с `revision` вида очереди) |
 | `devices` | список строк | [выделенные GPU (allocation)](../../GLOSSARY.md#allocation); пустой, пока задание их не держит |

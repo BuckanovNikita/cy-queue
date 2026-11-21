@@ -76,19 +76,19 @@ _Avoid_: рабочий каталог (that is the project)
 
 <a id="package-identity"></a>
 **Package identity**:
-A fingerprint `submit` freezes in the snapshot: a hash of the Python version, the name and version of every installed package and the installed CY and cy-queue code. A job whose package identity no longer matches at start fails with "Queued package identity changed".
+A fingerprint `submit` freezes in the snapshot: a hash of the Python version, the name and version of every installed package and the installed CY and cy-queue code. A job whose package identity no longer matches fails right after it starts; its log carries "Queued package identity changed".
 _Russian_: отпечаток окружения (package identity)
 _Avoid_: checksum, environment hash
 
 <a id="snapshot"></a>
 **Snapshot**:
-What `submit` freezes for each job: the fully composed CY configuration, the project and working directory, the Python interpreter, the installed CY version, the package identity (Python version, every installed package and the CY and cy-queue code) and the GPU request. Later changes to configuration files do not reach the job; the job fails at start if the interpreter, the CY version or the package identity changed, or if the project or working directory no longer exists.
+What `submit` freezes for each job: the fully composed CY configuration, the project and working directory, the Python interpreter, the installed CY version, the package identity (Python version, every installed package and the CY and cy-queue code) and the GPU request. Later changes to configuration files do not reach the job; the job fails right after it starts if the interpreter, the CY version or the package identity changed, or if the project or working directory no longer exists; the reason is in the job's log.
 _Russian_: снимок задания (snapshot)
 _Avoid_: copy, config dump
 
 <a id="sweep"></a>
 **Sweep**:
-A Hydra multirun given to `submit` (`-m` or `--multirun` written after `--` or after the first override; placed before them, `cy-queue` rejects it as an unrecognized argument). It expands into separate jobs, one per parameter combination, each with its own Hydra output directory and the same GPU request.
+A Hydra multirun given to `submit`: `-m` or `--multirun` written after `--` or after the first override (placed before them, `cy-queue` rejects it as an unrecognized argument), or `hydra.mode=MULTIRUN` in the overrides or the saved configuration. It expands into separate jobs, one per parameter combination, each with its own Hydra output directory and the same GPU request.
 _Russian_: sweep
 _Avoid_: batch, grid job
 

@@ -21,15 +21,7 @@
 
    Если вместо этого напечатано `cy-queue: Queue configuration is missing: ...`, создайте `queue.toml` ([Конфигурация](configuration.md)).
 
-2. В отдельном терминале запустите свой [worker](../GLOSSARY.md#worker) ([`worker`](commands/worker.md)) и оставьте его работать:
-
-   ```bash
-   cy-queue worker
-   ```
-
-   Worker запускает только ваши задания. Второй worker того же пользователя для того же каталога очереди завершается с `One live queue worker per owner/root is already registered`.
-
-3. Поставьте в очередь (submit) одно [задание (job)](../GLOSSARY.md#job) на одну GPU ([`submit`](commands/submit.md)):
+2. Поставьте в очередь (submit) одно [задание (job)](../GLOSSARY.md#job) на одну GPU ([`submit`](commands/submit.md)):
 
    ```bash
    cy-queue submit --gpus 1 --label my-run -- ground_truth=data/ground_truth.csv
@@ -41,7 +33,7 @@
 
    [Ссылка на задание (job reference)](../GLOSSARY.md#job-reference) для других команд — `job-17`.
 
-4. Следите за заданием ([`list`](commands/list.md)):
+3. Посмотрите очередь ([`list`](commands/list.md)):
 
    ```bash
    cy-queue list
@@ -52,15 +44,36 @@
    1	Job 17 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
    ```
 
-   Причина `Owner worker unavailable` значит, что ваш worker не запущен (шаг 2). Дальше задание проходит `pending` → `starting` → `running` и заканчивается в `completed` или `failed`; что значит каждое состояние, описано в [таблице состояний](commands/list.md#состояния-заданий).
+   Причина `Owner worker unavailable` значит, что ваш [worker](../GLOSSARY.md#worker) ещё не запущен: `submit` сам ничего не запускает.
 
-5. Тот же вид с автообновлением открывает [`tui`](commands/list.md#cy-queue-tui); закрыть его — `q`, worker и задания при этом продолжают работать:
+4. В отдельном терминале запустите свой worker ([`worker`](commands/worker.md)) и оставьте его работать:
+
+   ```bash
+   cy-queue worker
+   ```
+
+   Worker запускает только ваши задания. Второй worker того же пользователя для того же каталога очереди завершается с `One live queue worker per owner/root is already registered`.
+
+5. Снова посмотрите очередь. Когда GPU свободна, задание проходит `pending` → `starting` → `running` и заканчивается в `completed` или `failed`; что значит каждое состояние, описано в [таблице состояний](commands/list.md#состояния-заданий):
+
+   ```bash
+   cy-queue list
+   ```
+
+   ```text
+   my-queue | gpu-host | revision 4 | archived 0 | warnings 0
+   1	Job 17 · my-run	uid=1000	running	request=1	allocation=0	
+   ```
+
+   Номер ревизии в ваших выводах будет другим: он растёт при каждом изменении очереди.
+
+6. Тот же вид с автообновлением открывает [`tui`](commands/list.md#cy-queue-tui); закрыть его — `q`, worker и задания при этом продолжают работать:
 
    ```bash
    cy-queue tui
    ```
 
-6. Найдите журнал задания ([Состояние на диске](state.md#что-задание-оставляет-в-рабочем-каталоге)). Возьмите полный ID задания из поля `id`, затем откройте журнал:
+7. Найдите журнал задания ([Состояние на диске](state.md#что-задание-оставляет-в-рабочем-каталоге)). Возьмите полный ID задания из поля `id`, затем откройте журнал:
 
    ```bash
    cy-queue list --json
@@ -70,6 +83,8 @@
    Журнал содержит stdout и stderr процесса задания. Для задания `failed` причина есть и в поле `error` вывода `--json`.
 
 ## 2. Sweep и управление очередью
+
+В этом сценарии ваш worker остановлен (Ctrl+C в его терминале), поэтому новые задания ждут с причиной `Owner worker unavailable`, а ревизия очереди меняется только от ваших команд. При работающем worker первое подходящее задание запустится сразу, и ревизия будет расти сама.
 
 1. Поставьте [sweep](../GLOSSARY.md#sweep): по одному заданию на каждое значение `ultralytics.epochs` ([`submit`](commands/submit.md)). `-m` стоит после `--`. Без `--label` имя задания — имя задачи ClearML из конфигурации CY:
 
@@ -91,22 +106,22 @@
    ```
 
    ```text
-   my-queue | gpu-host | revision 3 | archived 0 | warnings 0
-   1	Job 17 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
+   my-queue | gpu-host | revision 12 | archived 0 | warnings 0
+   1	Job 17 · my-run	uid=1000	completed	request=1	allocation=0	
    2	Job 18 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
    3	Job 19 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
    ```
 
-3. Поставьте `job-19` первым, передав ревизию из `list` ([`move`](commands/jobs.md#move)):
+3. Поставьте `job-19` первым среди ожидающих, передав ревизию из `list` ([`move`](commands/jobs.md#move)):
 
    ```bash
-   cy-queue move job-19 top --revision 3
+   cy-queue move job-19 top --revision 12
    ```
 
-   Команда печатает очередь с новой ревизией (`revision 4`). Следующий `move` берёт уже её:
+   Команда печатает очередь с новой ревизией (`revision 13`). Следующий `move` берёт уже её:
 
    ```bash
-   cy-queue move job-19 after job-17 --revision 4
+   cy-queue move job-19 after job-18 --revision 13
    ```
 
    Если очередь успела измениться, команда ничего не меняет и печатает `Stale queue revision; refresh before reordering`: снова выполните `cy-queue list` и повторите с новой ревизией.
@@ -131,7 +146,7 @@
    Archived 1 job(s)
    ```
 
-   Архивные задания показывает `cy-queue list --archived`, все вместе — `cy-queue list --all`.
+   Вслед за этой строкой команда печатает очередь без архивных заданий. Архивные задания показывает `cy-queue list --archived`, все вместе — `cy-queue list --all`.
 
 6. Верните задание из архива ([`restore`](commands/jobs.md#restore)):
 
@@ -142,6 +157,8 @@
    ```text
    Restored 1 job(s)
    ```
+
+7. Снова запустите worker (`cy-queue worker`), чтобы оставшееся задание выполнилось.
 
 ## 3. Восстановление после сбоя
 
