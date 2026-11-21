@@ -3,7 +3,41 @@
 Persistent whole-GPU queue for clearml-yolo (CY) commands, shared by cooperating Linux
 users: durable jobs run as their owner, with reservations, holds, handoff, cancellation,
 recovery and a Textual UI. Product contract, terms, interfaces and operations:
-[DOCS.md](DOCS.md). User guide (Russian): [README.md](README.md).
+[DOCS.md](DOCS.md). User documentation (Russian): [README.md](README.md) and
+[docs/](docs/README.md).
+
+## User documentation
+
+- The user documentation is [README.md](README.md) (entry page) and the pages that
+  [docs/README.md](docs/README.md) lists. Each fact has one owning page: the page that
+  index lists for its subcommand, file or topic. Other pages link to the owner.
+  `README.md`, `docs/README.md` and [GLOSSARY.md](GLOSSARY.md) restate a fact only to
+  summarize or define.
+- A behavior or interface change updates, in the same PR, the DOCS.md section that owns
+  the contract (adding the fact when no section states it), every other DOCS.md section
+  that states it, the owning user page and every other place that restates it. Search
+  `DOCS.md`, `README.md`, `docs/` and `GLOSSARY.md` for the key, value, message and output
+  text, not only the identifier.
+- User pages describe the code's current behavior: each claim the change adds or edits
+  matches the code. DOCS.md may be less detailed than a user page. Where the code and
+  DOCS.md disagree, do not resolve it silently: fix the side the issue's intent
+  identifies, otherwise record the mismatch in the Linear issue. Record a mismatch noticed
+  elsewhere in the current task's issue, or in a new issue when it is unrelated.
+- A fact the index assigns to no page goes on the page of its subcommand or, if it belongs
+  to none, on the nearest reference page of the index; extend the index entry to name it.
+  When two index entries match, the reference page owns the fact and the command page
+  links to it.
+- Adding, renaming or removing a subcommand updates the DOCS.md "CLI" synopsis, the
+  `README.md` subcommand table, the `docs/README.md` index entry, `docs/formats/json.md`
+  when the subcommand accepts `--json`, and its command page: an existing page in
+  `docs/commands/` for a closely related subcommand, else a new page. Adding, renaming or
+  removing a page updates `docs/README.md`.
+- GLOSSARY.md defines the user-facing terms in English with their Russian wording and
+  lists the names the pages keep in English; developer and contract terms stay in the
+  DOCS.md "Domain terms" section. User pages use the glossary's Russian wording. A change
+  that introduces, renames, removes or narrows a user-facing term, or a name the glossary
+  lists as kept in English (state value, key, flag), updates GLOSSARY.md in the same
+  change.
 
 ## Layout
 
@@ -81,7 +115,8 @@ lint-imports
 
 - Raise the CY minimum in `pyproject.toml` when using a newer CY interface; never add an
   upper bound.
-- A behavior or interface change updates [DOCS.md](DOCS.md) in the same PR.
+- A behavior or interface change updates documentation in the same PR as specified in
+  [User documentation](#user-documentation).
 - Version changes come only from the release workflow: never edit `project.version` or
   `CHANGELOG.md` by hand, and do not create `CHANGELOG.md` (semantic-release does).
   Do not run `scripts/release.py` locally.
@@ -188,5 +223,5 @@ lint-imports
 - Changes to behavior, interfaces, dependencies, security or operational policy need a fresh independent review after integration and verification. Small wording edits may be self-reviewed.
 - Split large work into independent delegated tasks with explicit write ownership and acceptance evidence; delegated agents do not delegate further.
 - Use Conventional Commits. Commit automatic formatting separately from logic. Local commits within the task scope need no approval.
-- README.md is Russian; AGENTS.md and DOCS.md are English. Keep observed counts, timings and deployment status out of both files.
+- README.md and docs/ are Russian; AGENTS.md, DOCS.md and GLOSSARY.md are English. Keep observed counts, timings and deployment status out of all of them.
 - Keep machine-specific paths, endpoints and settings in local configuration, not in these files.
