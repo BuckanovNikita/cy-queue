@@ -127,10 +127,9 @@ lint-imports
   this project is what a skill calls the issue tracker. The team holds one project per
   repository and one number space across them: pass `team: SIP` and `project: cy-queue`
   on every issue create and list. Create an issue with an explicit `state`:
-  `In Progress` for work that starts now, otherwise the status of its triage role. Record
-  evidence
-  (source SHAs, checks, outcomes, limitations) in the issue and the PR; the repo keeps no
-  evidence directory.
+  `In Progress` for work that starts now, otherwise the status of its triage role.
+  Record evidence (source SHAs, checks, outcomes, limitations) in the issue and the PR;
+  the repo keeps no evidence directory.
 - Work on a task branch; push it and open a PR against `main` of
   `BuckanovNikita/cy-queue`. Humans merge. Never push `main` or merge into it locally.
   After pushing, confirm the remote branch points at the verified commit. Explicit
