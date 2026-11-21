@@ -1,180 +1,52 @@
 # cy-queue
 
-Очередь заданий для [clearml-yolo](https://github.com/BuckanovNikita/clearml-yolo).
-Вы отправляете запуск `cy` или `cy-train`, очередь ждёт, пока освободится нужное
-число GPU, и запускает его. Задания переживают перезапуск, их можно отменять,
-переставлять и убирать в архив — из командной строки или из терминального интерфейса.
+`cy-queue` — [очередь (queue)](GLOSSARY.md#queue) [заданий (job)](GLOSSARY.md#job) на целые GPU для команд [clearml-yolo](https://github.com/BuckanovNikita/clearml-yolo) (CY) `cy` и `cy-train`. Вы ставите команду CY в очередь, а ваш [worker](GLOSSARY.md#worker) запускает её, когда освобождается нужное число GPU. Очередь нужна ML-инженерам, которые делят один GPU-хост с другими пользователями Linux.
 
-Очередь нужна, только когда GPU делят несколько запусков или пользователей.
-Сами `cy` и `cy-train` работают без неё.
+Требования: Linux, Python `>=3.12.13,<3.14`, `clearml-yolo>=0.38` в том же окружении, GPU NVIDIA.
 
 ## Установка
 
-Нужны Linux с поддержкой pidfd и Python `>=3.12.13,<3.14`. Пакет ставится из
-исходников в то же окружение, что и `clearml-yolo`; в PyPI его нет.
-
-Сначала установите `clearml-yolo` по его инструкции, затем из его каталога:
+`cy-queue` ставится из исходников в окружение CY:
 
 ```bash
-git clone https://github.com/BuckanovNikita/cy-queue.git ../cy-queue
-uv sync --frozen --inexact
-uv pip install --python .venv/bin/python -e . -e ../cy-queue
-uv pip check --python .venv/bin/python
-uv run --frozen --no-sync cy-queue --help
+git clone https://github.com/BuckanovNikita/cy-queue.git /path/to/cy-queue
+uv pip install --python /path/to/clearml-yolo/.venv/bin/python -e /path/to/cy-queue
 ```
 
-Оба пакета ставятся одной командой, чтобы установщик проверил совместимость версий.
-Минимальная версия `clearml-yolo` указана в [pyproject.toml](pyproject.toml).
-Запускайте очередь через `uv run --frozen --no-sync cy-queue ...`: обычная
-синхронизация окружения удалит отдельно установленный пакет.
+Настройка хоста и `queue.toml` — в [Подготовке хоста](docs/setup.md).
 
-В сети без доступа к интернету подготовьте зависимости заранее и ставьте исходники
-с `--no-deps`; `uv pip check` после этого всё равно нужен.
-
-## Настройка
-
-Каждый пользователь создаёт `~/.config/clearml-yolo/queue.toml`
-(или `$XDG_CONFIG_HOME/clearml-yolo/queue.toml`). Файл и каталоги сами не появляются.
-
-```toml
-[queue]
-name = "Обучение команды"
-root = "/srv/clearml-yolo/queue"
-coordination_root = "/var/lib/clearml-yolo/coordination"
-max_used_memory_gib = 2.0  # необязательно
-```
-
-- `root` — записи о заданиях. Может лежать на NFS.
-- `coordination_root` — блокировки GPU. Локальная файловая система Linux либо NFS,
-  смонтированный с `hard,local_lock=flock`;
-  [требования к NFS](https://github.com/BuckanovNikita/clearml-yolo/blob/master/docs/queue.md#nfs-coordination).
-- `max_used_memory_gib` — сколько памяти на GPU уже может быть занято, чтобы очередь
-  считала её свободной. По умолчанию 2 GiB.
-
-Пути абсолютные. У всех, кто пользуется общей очередью, каталоги одинаковые.
-Вместо личного файла можно указать общий:
+## Первое задание
 
 ```bash
-export CY_QUEUE_CONFIG=/etc/clearml-yolo/queue.toml
 cy-queue config
-```
-
-`cy-queue config` показывает, какие настройки прочитаны, и ничего не создаёт.
-
-## Работа с очередью
-
-Отправьте задание и запустите worker — процесс, который выполняет ваши задания:
-
-```bash
-cy-queue submit --gpus 1 -- ground_truth=dataset.csv ultralytics.model=yolo11n.pt
-cy-queue worker
-```
-
-Всё после `--` — обычные параметры `cy`. Для `cy-train` добавьте `--command train`.
-Готовая конфигурация передаётся так же, как в прямой команде:
-
-```bash
-cy-queue submit --gpus 2 -- --config-dir cy-config --config-name cy
-cy-queue submit --command train --gpus 1 -- --config-dir train-config --config-name cy-train
-```
-
-Устройства в параметрах и YAML не задавайте (`device: null`): их назначает очередь.
-Обучение получает все выделенные GPU, предсказания — первую из них, остальные
-освобождаются после обучения. `--gpus N` просит любые N свободных GPU,
-`--devices 0,2` — конкретные; это индексы CUDA с учётом `CUDA_VISIBLE_DEVICES`.
-Заданий без GPU не бывает.
-
-Worker выполняет только задания своего пользователя, поэтому каждый запускает свой —
-в отдельном терминале или как сервис. Терминал, из которого отправлено задание,
-можно закрыть. Журнал каждого запуска пишется в `.cy/queue-logs/JOB_ID.log` в каталоге,
-откуда задание отправили. `cy-queue worker --log-level DEBUG` показывает каждый опрос
-очереди, `WARNING` оставляет только проблемы.
-
-`submit` печатает номер и имя, например `Job 17 · Обучение детектора`. Имя берётся
-из названия задачи ClearML или из `--label`. Остальные команды принимают `job-17`:
-
-```bash
+cy-queue worker                      # в отдельном терминале
+cy-queue submit --gpus 1 -- ground_truth=data/ground_truth.csv
 cy-queue list
-cy-queue cancel job-17
-cy-queue archive job-17 job-18   # убрать завершённые из списка
-cy-queue list --archived
-cy-queue restore job-17
 ```
 
-Отменять и архивировать можно только свои задания. Архив ничего не удаляет:
-результаты, конфигурации и журналы остаются, а `restore` возвращает задание в список,
-не запуская его заново. Для скриптов у команд есть `--json`.
+Подробно, с выводом и поиском журнала задания, — в [первом сценарии](docs/scenarios.md#1-первый-запуск).
 
-Перебор параметров отправляется одной командой. Все варианты проверяются до того,
-как первый попадёт в очередь:
+## Подкоманды
 
-```bash
-cy-queue submit --gpus 1 -- -m --config-dir cy-config --config-name cy ultralytics.epochs=10,20
-```
-
-### Терминальный интерфейс
-
-```bash
-cy-queue tui
-```
-
-| Клавиши | Действие |
+| Подкоманда | Что делает |
 | --- | --- |
-| стрелки | выбрать задание |
-| `u` / `d`, `t` / `g` | сдвинуть вверх / вниз, в начало / в конец очереди |
-| `b` / `a` | поставить перед или после другого ожидающего задания |
-| `c` | отменить |
-| `x` / `s` | в архив / из архива |
-| `v` | переключить список: текущие, архив, все |
-| `o` | открыть задачу в ClearML |
-| `r` | восстановить задание после сбоя |
-| `q` | выйти |
+| [`config`](docs/commands/config.md) | Печатает настройки очереди. |
+| [`submit`](docs/commands/submit.md) | Ставит в очередь команду CY или Hydra sweep. |
+| [`worker`](docs/commands/worker.md) | Запускает ваши задания на GPU хоста. |
+| [`list`](docs/commands/list.md) | Печатает очередь: состояния, GPU, причины ожидания. |
+| [`tui`](docs/commands/list.md#cy-queue-tui) | Интерактивный [вид очереди (queue view)](GLOSSARY.md#queue-view) в терминале. |
+| [`move`](docs/commands/jobs.md#move) | Меняет порядок ожидающих заданий. |
+| [`cancel`](docs/commands/jobs.md#cancel) | Отменяет задание. |
+| [`recover`](docs/commands/jobs.md#recover) | Освобождает задание в `recovery_required`: останавливает оставшиеся процессы и снимает резерв. |
+| [`archive`](docs/commands/jobs.md#archive) | Убирает завершённые задания в архив. |
+| [`restore`](docs/commands/jobs.md#restore) | Возвращает задания из архива. |
+| [`gpu list`](docs/commands/gpu.md#gpu-list) | Показывает GPU хоста, удержания и резервы. |
+| [`gpu disable`](docs/commands/gpu.md#gpu-disable) | Ставит ваше удержание на GPU. |
+| [`gpu enable`](docs/commands/gpu.md#gpu-enable) | Снимает ваше удержание с GPU. |
+| [`gpu free`, `gpu release`](docs/commands/gpu.md#gpu-free-и-gpu-release) | Снимает с GPU резерв и все удержания. |
 
-Закрытие интерфейса worker не останавливает.
+## Дальше
 
-## GPU
-
-Очередь считает GPU свободной, если её никто не зарезервировал и занятой памяти
-строго меньше порога `max_used_memory_gib`. Если узнать объём занятой памяти не
-удалось, GPU не используется. Порог проверяется ещё раз прямо перед запуском задания.
-Изменив его, перезапустите worker: уже запущенные задания работают со старым значением.
-
-Отдельную GPU можно вывести из очереди и вернуть. Номера здесь физические, как в
-`nvidia-smi`:
-
-```bash
-cy-queue gpu list
-cy-queue gpu disable 2
-cy-queue gpu enable 2
-cy-queue gpu free 2
-```
-
-`gpu free` снимает с GPU все резервы и блокировки во всех очередях машины.
-Процессы при этом не останавливаются, а следующее задание всё равно пройдёт
-проверку памяти.
-
-## Если задание не запускается
-
-- Запущен ли ваш worker. Чужой worker ваши задания не возьмёт.
-- Есть ли столько свободных GPU, сколько запрошено: `cy-queue gpu list` покажет резервы
-  и отключённые устройства.
-- Не занята ли на GPU память сверх порога посторонним процессом.
-
-Состояние `recovery_required` означает, что очередь не смогла убедиться, что все
-процессы задания завершились, и держит его GPU в резерве. Как разобраться и снять
-резерв, описано в [руководстве по восстановлению](https://github.com/BuckanovNikita/clearml-yolo/blob/master/docs/queue.md#guardians-cancellation-and-recovery).
-Файлы блокировок вручную не удаляйте.
-
-## Обновление
-
-Перед обновлением пакетов остановите отправку и все worker и дождитесь окончания
-активных заданий. Задания, которые остались ждать, после обновления нужно отменить
-и отправить заново. Записи очереди и каталоги при этом не удаляйте.
-Порядок действий — в [DOCS.md](DOCS.md#operations-coordinated-upgrade-and-rollback).
-
-## Документация
-
-- [Руководство оператора](https://github.com/BuckanovNikita/clearml-yolo/blob/master/docs/queue.md) —
-  общие каталоги, NFS, восстановление, управление GPU (на английском).
-- [DOCS.md](DOCS.md#wire-protocols-and-cy-interfaces) — как очередь связана с `clearml-yolo`.
-- [AGENTS.md](AGENTS.md#checks) — окружение разработки и проверки.
+- [Указатель документации](docs/README.md).
+- [Глоссарий](GLOSSARY.md).
+- [Репозиторий CY](https://github.com/BuckanovNikita/clearml-yolo) — команды и конфигурация CY.
