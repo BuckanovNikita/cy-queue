@@ -13,18 +13,20 @@ recovery and a Textual UI. Product contract, terms, interfaces and operations:
   index lists for its subcommand, file or topic. Other pages link to the owner.
   `README.md`, `docs/README.md` and [GLOSSARY.md](GLOSSARY.md) restate a fact only to
   summarize or define.
-- A behavior or interface change updates, in the same PR, every DOCS.md section that
-  states the fact, the owning user page and every other place that restates it. Search
+- A behavior or interface change updates, in the same PR, the DOCS.md section that owns
+  the contract (adding the fact when no section states it), every other DOCS.md section
+  that states it, the owning user page and every other place that restates it. Search
   `DOCS.md`, `README.md`, `docs/` and `GLOSSARY.md` for the key, value, message and output
   text, not only the identifier.
-- Each claim the change adds or edits matches the code and does not contradict DOCS.md;
-  DOCS.md may be less detailed than a user page. If the code and DOCS.md disagree, the
-  code's current behavior is the fact: fix DOCS.md in the same PR, or record the mismatch
-  in the Linear issue when fixing it is out of scope. Record a mismatch noticed elsewhere
-  in the Linear issue.
+- User pages describe the code's current behavior: each claim the change adds or edits
+  matches the code. DOCS.md may be less detailed than a user page. Where the code and
+  DOCS.md disagree, do not resolve it silently: fix the side the issue's intent
+  identifies, otherwise record the mismatch in the Linear issue. Record a mismatch noticed
+  elsewhere in the current task's issue, or in a new issue when it is unrelated.
 - A fact the index assigns to no page goes on the page of its subcommand or, if it belongs
-  to none, on the nearest reference page (`docs/configuration.md`, `docs/state.md`,
-  `docs/setup.md`); extend the index entry to name it.
+  to none, on the nearest reference page of the index; extend the index entry to name it.
+  When two index entries match, the reference page owns the fact and the command page
+  links to it.
 - Adding, renaming or removing a subcommand updates the DOCS.md "CLI" synopsis, the
   `README.md` subcommand table, the `docs/README.md` index entry, `docs/formats/json.md`
   when the subcommand accepts `--json`, and its command page: an existing page in
