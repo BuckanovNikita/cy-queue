@@ -66,7 +66,7 @@ cy-queue [--root ROOT] worker [-h] [--log-level {DEBUG,INFO,WARNING,ERROR}]
 3. Перед самым стартом guardian ещё раз читает память выделенных GPU. Если какая-то из них недоступна или занята не меньше порога, задание возвращается в `pending` с причиной `GPU memory is unavailable or at least <порог> GiB at startup`. Если резерв GPU успели снять (`gpu free`), причина будет `GPU allocation was freed before startup`. Если за это время задание отменили, оно становится `cancelled`.
 4. Задание переходит в `running`, и guardian запускает процесс задания.
 5. Процесс задания сверяет снимок с текущей установкой и завершается с ошибкой (задание станет `failed`, сообщение будет в журнале задания), если изменились версия или установка CY (`Queued package version changed; resubmit with the current installation`, `Queued package identity changed; resubmit with the current installation`), интерпретатор (`Queued interpreter changed; run the worker in the submitting environment`) или пропал [рабочий каталог (project)](../../GLOSSARY.md#project) (`Queued project or working directory is no longer available`).
-6. Затем процесс переходит в [текущий каталог (working directory)](../../GLOSSARY.md#working-directory), который был текущим при `submit`, и запускает команду CY (`pipeline` или `train`) интерпретатором из снимка, с замороженной конфигурацией, в которой устройства обучения и предсказания привязаны к выделенным GPU.
+6. Затем процесс переходит в [текущий каталог (working directory)](../../GLOSSARY.md#working-directory), который был текущим при `submit`, и запускает команду CY (`pipeline` или `train`) интерпретатором из снимка, с замороженной конфигурацией, в которой устройства привязаны к выделенным GPU: обучение получает все выделенные GPU, предсказание, сравнение и экспорт — первую из них. Фазы, где явно указан `cpu`, остаются на CPU.
 
 Если guardian не перевёл задание из `starting` за 10 секунд или его процесс исчез сразу после запуска, задание становится `recovery_required`.
 
@@ -95,11 +95,11 @@ stdout и stderr процесса задания дописываются в `.c
    - `failed` с ошибкой `Native process exited with status <код>`, если код не `0`;
    - `failed` с ошибкой `Guardian operation failed: <тип ошибки>`, если сам guardian не смог довести задание до конца.
 3. Только после этого guardian снимает резерв GPU, и они становятся доступны следующему заданию на ближайшем опросе любого worker.
-4. Если проверить завершение потомков не удалось, задание становится `recovery_required` с ошибкой `Cleanup verification failed: <тип ошибки>; owner recovery required`, а GPU остаются в резерве.
+4. Если проверить завершение потомков не удалось, задание становится `recovery_required` с ошибкой `Cleanup verification failed: <тип ошибки>; owner recovery required`. Guardian после этого завершается, и резерв GPU заканчивается вместе с ним (см. [ниже](#когда-задание-требует-восстановления)).
 
 ### Отмена
 
-`cancel` для задания `starting` или `running` переводит его в `cancelling`. Guardian посылает процессу задания `SIGTERM` и ждёт до 90 секунд, чтобы команда CY успела завершиться сама. Затем guardian завершает всё дерево процессов, задание становится `cancelled`, и только тогда снимается резерв GPU. Отмена ожидающего задания описана в [jobs](jobs.md).
+`cancel` для задания `starting` или `running` переводит его в `cancelling`. Guardian посылает процессу задания `SIGTERM` и ждёт до 90 секунд, чтобы команда CY успела завершиться сама. Затем guardian завершает всё дерево процессов, задание становится `cancelled`, и только тогда снимается резерв GPU. В поле `error` отменённого задания остаётся причина выхода процесса, например `Native process exited with status 1`. Отмена ожидающего задания описана в [jobs](jobs.md).
 
 ### Передача GPU между этапами пайплайна
 
@@ -122,13 +122,13 @@ Worker останавливается по `SIGINT` (Ctrl+C) или `SIGTERM`. �
 
 | Ошибка задания | Причина |
 | --- | --- |
-| `Guardian exited without verified cleanup; owner recovery required` | Guardian задания больше не существует (например, убит или хост перезагружен), а резерв его GPU остался. |
+| `Guardian exited without verified cleanup; owner recovery required` | Guardian задания больше не существует (например, убит или хост перезагружен), и никто не подтвердил, что процессы задания завершены. |
 | `Execution state is uncertain; owner recovery required` | Задание в `starting`, `running` или `cancelling`, но ни guardian, ни процесса запуска нет. |
 | `Guardian identity disappeared before startup` | Guardian исчез сразу после запуска. |
 | `Guardian startup did not complete; owner recovery required` | Guardian не перевёл задание из `starting` за 10 секунд. |
 | `Cleanup verification failed: <тип ошибки>; owner recovery required` | Guardian не смог подтвердить, что все процессы задания завершены. |
 
-GPU такого задания остаются в резерве. Что делать дальше, описано в [`recover`](jobs.md).
+Резерв GPU держит guardian задания, пока работает. Когда guardian пропал, резерва уже нет: `gpu list` показывает GPU без задания, а `list` — `allocation=-`. Оставшиеся процессы задания при этом могут продолжать работать и занимать GPU, и другое задание получит этот GPU, если занятая память ниже [`max_used_memory_gib`](../configuration.md#раздел-queue). Остановите оставшиеся процессы командой [`recover`](jobs.md#recover).
 
 ### Журнал
 
@@ -166,7 +166,7 @@ Worker ничего не печатает в stdout. Его действия в�
 | `cy-queue: Cannot probe process supervision in <интерпретатор>: ...` | Интерпретатор, из которого выполнялся `submit`, больше не существует (например, окружение удалено). Worker останавливается на этом задании при каждом запуске. Отмените задание (`cancel`, см. [jobs](jobs.md)) и поставьте его в очередь заново из рабочего окружения. |
 | Задание `failed`, в журнале задания `Queued package version changed; resubmit with the current installation` | CY обновили после `submit`. Поставьте задание в очередь заново. |
 | Задания стоят с `Owner worker unavailable` | Ваш worker не запущен или не отвечает. Запустите `cy-queue worker`. |
-| Задания стоят с `GPU memory telemetry unavailable` | Worker не смог прочитать память одной из видимых GPU. Проверьте GPU и драйвер (`nvidia-smi`). |
+| Задания стоят с `GPU memory telemetry unavailable` | Worker не смог прочитать память GPU (драйвер не ответил) или набор видимых ему GPU изменился с его запуска. Проверьте GPU и драйвер (`nvidia-smi`); если менялись GPU, перезапустите worker. |
 
 ## См. также
 

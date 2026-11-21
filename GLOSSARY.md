@@ -149,7 +149,7 @@ _Russian_: отменено (`cancelled`)
 
 <a id="recovery-required"></a>
 **Recovery required**:
-The state `recovery_required`: the queue lost track of whether the job's processes are still running (for example, its guardian died) and keeps its GPUs reserved. The owner runs `recover`, which stops what is left of the job, frees its GPUs and makes it `cancelled`; `cancel` alone does not change this state.
+The state `recovery_required`: the queue lost track of whether the job's processes are still running (for example, its guardian died). The job's reservation ends with its guardian, so its GPUs can already show as free while leftover processes still use them. The owner runs `recover`, which stops what is left of the job and makes it `cancelled`; `cancel` alone does not change this state.
 _Russian_: требуется восстановление (recovery required)
 _Avoid_: crashed, stuck
 
@@ -183,7 +183,7 @@ _Avoid_: assignment, slot
 
 <a id="reservation"></a>
 **Reservation**:
-A GPU taken by a job's allocation, kept in the coordination root until the job's processes are verified to be gone. No other job is admitted to a reserved GPU, whichever queue root it uses.
+A GPU taken by a job's allocation: a lock in the coordination root that the job's guardian holds while it runs. No other job is admitted to a reserved GPU, whichever queue root it uses. The guardian releases it after verifying that the job's processes are gone; if the guardian dies, the reservation ends with it.
 _Russian_: резерв (reservation)
 _Avoid_: lock, lease, claim
 

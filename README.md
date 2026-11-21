@@ -1,6 +1,6 @@
 # cy-queue
 
-`cy-queue` — [очередь (queue)](GLOSSARY.md#queue) [заданий (job)](GLOSSARY.md#job) на целые GPU для команд [clearml-yolo](https://github.com/BuckanovNikita/clearml-yolo) (CY) `cy` и `cy-train`. Вы ставите команду CY в очередь, а ваш [worker](GLOSSARY.md#worker) запускает её, когда освобождается нужное число GPU. Очередь нужна ML-инженерам, которые делят один GPU-хост с другими пользователями Linux.
+`cy-queue` — [очередь (queue)](GLOSSARY.md#queue) [заданий (job)](GLOSSARY.md#job) на целые GPU для команд [clearml-yolo](https://github.com/BuckanovNikita/clearml-yolo) (CY) `cy` и `cy-train`. Вы ставите команду CY в очередь, а ваш [worker](GLOSSARY.md#worker) запускает её, когда освобождается нужное число GPU. Очередь нужна ML-инженерам, которые делят один GPU-хост с другими пользователями Linux. Команды `cy` и `cy-train` работают и без очереди; очередь нужна, только чтобы планировать запуски.
 
 Требования: Linux, Python `>=3.12.13,<3.14`, `clearml-yolo>=0.38` в том же окружении, GPU NVIDIA.
 

@@ -145,18 +145,21 @@
 
 ## 3. Восстановление после сбоя
 
-1. В `list` задание стоит в состоянии `recovery_required` — [требуется восстановление (recovery required)](../GLOSSARY.md#recovery-required): очередь не знает, остались ли процессы задания, и держит его GPU в [резерве (reservation)](../GLOSSARY.md#reservation). Причину показывает поле `error` в `cy-queue list --json`; возможные ошибки перечислены в [worker](commands/worker.md#когда-задание-требует-восстановления). В это состояние задание переводит worker владельца; если [guardian (процесс-надзиратель задания)](../GLOSSARY.md#guardian) пропал, пока ваш worker был остановлен, задание станет `recovery_required` при следующем запуске worker.
+1. В `list` задание стоит в состоянии `recovery_required` — [требуется восстановление (recovery required)](../GLOSSARY.md#recovery-required): очередь не знает, остались ли процессы задания. [Резерв (reservation)](../GLOSSARY.md#reservation) GPU держал guardian задания; если guardian пропал, резерва уже нет, а оставшиеся процессы могут продолжать занимать GPU. Причину показывает поле `error` в `cy-queue list --json`; возможные ошибки перечислены в [worker](commands/worker.md#когда-задание-требует-восстановления). В это состояние задание переводит worker владельца; если [guardian (процесс-надзиратель задания)](../GLOSSARY.md#guardian) пропал, пока ваш worker был остановлен, задание станет `recovery_required` при следующем запуске worker.
 
-2. Посмотрите, какие GPU держит задание ([`gpu list`](commands/gpu.md#gpu-list)):
+2. Посмотрите, что очередь знает о GPU ([`gpu list`](commands/gpu.md#gpu-list)), и проверьте через `nvidia-smi`, не занимают ли GPU оставшиеся процессы задания:
 
    ```bash
    cy-queue gpu list
+   nvidia-smi
    ```
 
    ```text
    0	holds=-	job=-
-   1	holds=-	job=owned by user 1000
+   1	holds=-	job=-
    ```
+
+   После гибели guardian `gpu list` показывает GPU задания без резерва (`job=-`), даже если его процессы ещё работают.
 
 3. Восстановите задание ([`recover`](commands/jobs.md#recover)). Это может сделать только владелец:
 
@@ -170,7 +173,7 @@
 
    `recover` останавливает оставшиеся процессы задания и снимает его резерв. Если guardian задания ещё жив, команда отказывает с `Guardian is still alive; cancel it before attempting recovery`: выполните `cy-queue cancel job-17` и дождитесь его завершения. При `GPU guardian still owns its locks; recovery refused` повторите позже. `cancel` сам по себе состояние `recovery_required` не меняет.
 
-4. Если `recover` не помог и `gpu list` всё ещё показывает GPU в резерве (`job=owned by user ...`), освободите его ([`gpu free` или `gpu release`](commands/gpu.md#gpu-free-и-gpu-release) — одна команда под двумя именами). Сначала убедитесь, что на GPU нет процессов задания, например через `nvidia-smi`: команда ничего не проверяет и снимает резерв и удержания всех пользователей сразу.
+4. Если `gpu list` показывает GPU в резерве (`job=owned by user ...`) задания, которое уже не выполняется, освободите его ([`gpu free` или `gpu release`](commands/gpu.md#gpu-free-и-gpu-release) — одна команда под двумя именами). Сначала убедитесь, что на GPU нет процессов задания, например через `nvidia-smi`: команда ничего не проверяет и снимает резерв и удержания всех пользователей сразу.
 
    ```bash
    cy-queue gpu free 1

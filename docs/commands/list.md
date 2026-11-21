@@ -33,7 +33,7 @@ cy-queue tui
 | `completed` | Процесс задания завершился с кодом `0`. | Смотреть результат в ClearML и журнале. Можно [`archive`](jobs.md). |
 | `failed` | Процесс задания завершился с ненулевым кодом или его не удалось довести до конца; причина в поле `error` (`--json`) и в журнале задания. | Прочитать журнал задания, исправить причину, поставить задание в очередь заново. Можно `archive`. |
 | `cancelled` | Задание отменено до запуска, остановлено через `cancel` или очищено через `recover`. | Можно `archive`. |
-| `recovery_required` | [Требуется восстановление](../../GLOSSARY.md#recovery-required) (recovery required): очередь не знает, остались ли процессы задания, и держит его GPU в резерве. | Владелец выполняет [`recover`](jobs.md). Почему задание попало в это состояние, описано в [worker](worker.md#когда-задание-требует-восстановления). |
+| `recovery_required` | [Требуется восстановление](../../GLOSSARY.md#recovery-required) (recovery required): очередь не знает, остались ли процессы задания. Резерв GPU держит guardian задания: если guardian пропал, GPU в `gpu list` уже без задания, хотя оставшиеся процессы могут его занимать. | Владелец выполняет [`recover`](jobs.md). Почему задание попало в это состояние, описано в [worker](worker.md#когда-задание-требует-восстановления). |
 
 `completed`, `failed` и `cancelled` — конечные состояния; только такие задания можно архивировать.
 
@@ -106,7 +106,7 @@ GPU локального хоста печатаются физическими 
 | Причина | Значение |
 | --- | --- |
 | `Owner worker unavailable` | У владельца задания нет живого worker на этом хосте. |
-| `Owner GPU telemetry unavailable` | Worker владельца жив, но не сообщил о своих GPU, например не смог прочитать их память. |
+| `Owner GPU telemetry unavailable` | Worker владельца жив, но не сообщил ни об одной GPU: он ещё не выполнил первый опрос, не смог прочитать их память или ему не видна ни одна GPU (например, worker запущен с пустым `CUDA_VISIBLE_DEVICES`). |
 | `Requested GPUs are outside the owner worker CUDA visibility` | Задание с `--devices` просит GPU, которых не видит worker владельца. |
 | `Requested GPU allocation is disabled by an operator hold` | На одной из GPU задания с `--devices` стоит [удержание](../../GLOSSARY.md#hold) (hold). |
 | `Waiting for the complete exact GPU allocation` | Не все GPU задания с `--devices` свободны: они заняты, в резерве или их память не ниже порога. |
