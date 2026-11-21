@@ -1,7 +1,8 @@
 # cy-queue reference
 
 Product contract and reference for cy-queue. Read on demand; binding rules for agents
-are in [AGENTS.md](AGENTS.md); user-facing syntax is in [README.md](README.md) (Russian).
+are in [AGENTS.md](AGENTS.md); user-facing syntax is in [README.md](README.md) and
+[docs/](docs/README.md) (Russian).
 
 ## Architecture and data flow
 
@@ -198,3 +199,5 @@ ownership evidence; a new root cannot bypass live reservations.
 The full pre-compression documents are in git at commit `9bcd8fa`; read one with
 `git show 9bcd8fa:<path>`. Removed top-level paths: `CLAUDE.md`, `GLOSSARY.md`, `specs/`
 (`baseline.md`), `docs/` (`development.md`, `interfaces.md`, `migration.md`, `agents/`).
+The current `GLOSSARY.md` and `docs/` are the user glossary and user documentation written
+after that commit, not the removed files.
