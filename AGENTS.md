@@ -123,24 +123,46 @@ lint-imports
 
 ## Delivery and release
 
-- Plans, acceptance criteria and status live in Linear, team `SIP`, project `cy-queue`.
-  Record evidence (source SHAs, checks, outcomes, limitations) in the issue and the PR;
-  the repo keeps no evidence directory.
+- Plans, acceptance criteria and status live in Linear, team `SIP`, project `cy-queue`;
+  this project is what a skill calls the issue tracker. The team holds one project per
+  repository and one number space across them: pass `team: SIP` and `project: cy-queue`
+  on every issue create and list. Create an issue with an explicit `state`:
+  `In Progress` for work that starts now, otherwise the status of its triage role. Record
+  evidence
+  (source SHAs, checks, outcomes, limitations) in the issue and the PR; the repo keeps no
+  evidence directory.
 - Work on a task branch; push it and open a PR against `main` of
   `BuckanovNikita/cy-queue`. Humans merge. Never push `main` or merge into it locally.
   After pushing, confirm the remote branch points at the verified commit. Explicit
   no-commit/no-push limits take precedence.
 - PR title and every branch commit need an accurate Conventional Commit type; they
   decide the version. A change to installed behavior, requirements or package metadata
-  is `fix`, `perf` or `feat`.
-- Linear readiness labels (separate from lifecycle state): `needs-triage`, `needs-info`,
-  `ready-for-agent`, `ready-for-human`, `wontfix`. Mark an issue Done only after its
-  changes reach `main` and its acceptance criteria are met.
-- Lifecycle states: Backlog, Todo, In Progress, In Review, Done, Canceled, Duplicate. Move
-  to In Review when implementation and required verification are ready. A ready label
-  never overrides dependencies: start dependent work only after its prerequisite is
-  implemented and verified on its base branch; a canceled prerequisite forces replanning
-  or removing dependent work, never bypassing it.
+  is `fix`, `perf` or `feat`. End the PR title with the identifier of its main issue,
+  `... (SIP-123)`, so Linear's GitHub integration can link it; the both-ways links below
+  are still required.
+- The Linear status is the triage role. Where a skill names a role, set the status:
+
+  | Role              | Status                                | Meaning                 |
+  | ----------------- | ------------------------------------- | ----------------------- |
+  | `needs-triage`    | `Triage`, no `ready-for-human` label  | Maintainer evaluates    |
+  | `needs-info`      | `Backlog`                             | Waiting on the reporter |
+  | `ready-for-agent` | `Todo`                                | Specified for an agent  |
+  | `ready-for-human` | `Triage` + label `ready-for-human`    | Human implements        |
+  | `wontfix`         | `Canceled`, after a comment says why  | Will not be actioned    |
+
+  `ready-for-human` is the only role with a label; remove it when the issue leaves the
+  role. An issue with no role yet goes to `Triage`. `In Progress`, `In Review`, `Done`
+  and `Duplicate` are past triage. Category roles are labels: `bug` = `Bug`,
+  `enhancement` = `Feature`.
+- Move an issue to In Review when implementation and required verification are ready.
+  Mark it Done only after its changes reach `main` and its acceptance criteria are met.
+  A ready role (`ready-for-agent`, `ready-for-human`) never overrides dependencies: start
+  dependent work only after its prerequisite is implemented and verified on its base
+  branch; a canceled prerequisite forces replanning or removing dependent work, never
+  bypassing it.
+- Dependencies are Linear relations (`blockedBy` / `blocks`). Merge a duplicate with
+  `duplicateOf` on the absorbed issue: Linear moves it to `Duplicate`, and setting that
+  status directly fails.
 - Default to one branch and PR per cohesive feature (may cover several issues); link
   issues, PRs and evidence both ways; keep issues open until the PR merges.
 - Stacks: first PR targets `main`, children target their parent branch; humans merge
