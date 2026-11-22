@@ -200,6 +200,47 @@ def test_cli_submits_lists_reorders_and_cancels_without_runtime(tmp_path: Path) 
     assert run("list", "--json").returncode == 0
 
 
+def test_cli_move_archive_and_restore_print_the_waiting_reasons_list_prints(tmp_path: Path) -> None:
+    command = queue_command(tmp_path)
+    environment = queue_environment(tmp_path)
+
+    def run(*arguments: str) -> dict[str, object]:
+        result = subprocess.run(  # noqa: S603 - fixed package CLI and isolated local records
+            [*command, *arguments, "--json"],
+            env=environment,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        view: dict[str, object] = json.loads(result.stdout)
+        return view
+
+    def reasons(view: dict[str, object]) -> dict[str, object]:
+        jobs = view["jobs"]
+        assert isinstance(jobs, list)
+        return {job["reference"]: job["waiting_reason"] for job in jobs if job["state"] == "pending"}
+
+    submitted = subprocess.run(  # noqa: S603 - fixed package CLI and isolated local records
+        [*command, "submit", "--gpus", "1", "--", "-m", "ground_truth=input.csv", "ultralytics.epochs=1,2,3"],
+        env=environment,
+        text=True,
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    assert submitted.returncode == 0, submitted.stderr
+    assert run("cancel", "job-1")["state"] == "cancelled"
+    listed = run("list")
+    expected = reasons(listed)
+    # No worker has recorded a reason, so the printed reason is the computed one.
+    assert expected == {"job-2": "Owner worker unavailable", "job-3": "Owner worker unavailable"}
+    assert reasons(run("move", "job-3", "top", "--revision", str(listed["revision"]))) == expected
+    assert reasons(run("archive", "job-1")) == expected
+    assert reasons(run("restore", "job-1")) == expected
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

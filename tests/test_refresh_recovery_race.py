@@ -209,3 +209,29 @@ def test_terminal_refresh_defers_claim_changed_during_liveness_check(
     assert store.view().jobs == (observed,)
     assert publications == []
     assert reads == 2
+
+
+def test_repeated_cancel_does_not_extend_the_startup_window(
+    refresh_case: tuple[NFSQueueStore, QueueProcesses, PublicJob, GuardianClaim],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import time
+
+    store, processes, job, _ = refresh_case
+    monkeypatch.setattr(runtime, "_STARTUP_WINDOW_SECONDS", 30)
+    monkeypatch.setattr(processes.pool, "claim_for", lambda identifier: None)
+    clock = [1_000.0]
+    monkeypatch.setattr(time, "time", lambda: clock[0])
+    # A starting job whose guardian never wrote launch.json or a claim.
+    store.update(job.id, "starting")
+    clock[0] = 1_010.0
+    store.cancel(job.id)
+    clock[0] = 1_035.0
+    store.cancel(job.id)
+    clock[0] = 1_045.0
+    observed = store.view().jobs[0]
+    assert observed.state == "cancelling"
+    processes._refresh_job(observed)
+    result = store.view().jobs[0]
+    assert result.state == "recovery_required"
+    assert result.error == "Execution state is uncertain; owner recovery required"

@@ -4,6 +4,8 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol
 
+from loguru import logger
+
 from cy_queue.core.queue import (
     TERMINAL_JOB_STATES,
     GPUControlStatus,
@@ -108,8 +110,15 @@ class QueueService:
         if host_id is not None and host_id != self.identity.host_id:
             return self._visible(self.storage.view(host_id), visibility)
         issues = self.processes.refresh_monitoring()
-        unavailable = {issue.job_id for issue in issues}
-        view = self.storage.view(host_id)
+        view = self._current(self.storage.view(host_id), unavailable={issue.job_id for issue in issues})
+        return self._visible(view.model_copy(update={"refresh_issues": issues}), visibility)
+
+    def _current(self, view: QueueView, *, unavailable: set[str] | None = None) -> QueueView:
+        """Show local pending jobs with a computed waiting reason and active jobs with their reservations.
+
+        Jobs whose private status is unavailable keep their recorded values.
+        """
+        skipped = unavailable or set()
         inventories = self.processes.owner_inventory()
         owners = set(inventories)
         reserved = self.processes.reserved()
@@ -117,7 +126,7 @@ class QueueService:
         selected = earliest_runnable(view.jobs, (), owners, reserved=reserved, owner_observations=inventories)
         jobs: list[PublicJob] = []
         for job in view.jobs:
-            if job.id in unavailable:
+            if job.id in skipped:
                 jobs.append(job)
             elif job.state == "pending":
                 reason = waiting_reason(job, inventories.get(job.owner_uid, ()), owners, reserved, held)
@@ -130,7 +139,21 @@ class QueueService:
                 jobs.append(job.model_copy(update={"waiting_reason": reason}))
             else:
                 jobs.append(self._allocation(job))
-        return self._visible(view.model_copy(update={"jobs": tuple(jobs), "refresh_issues": issues}), visibility)
+        return view.model_copy(update={"jobs": tuple(jobs)})
+
+    def _committed(self, view: QueueView) -> QueueView:
+        """Present a committed change; its success never depends on reading current values."""
+        try:
+            return self._current(view)
+        except (OSError, ValueError, RuntimeError) as error:
+            # The change is already durable, so failing here would report an applied change as failed.
+            logger.warning(
+                "Change applied; showing recorded waiting reasons and devices because current values "
+                "are unavailable: {}: {}",
+                type(error).__name__,
+                error,
+            )
+            return view
 
     @staticmethod
     def _visible(view: QueueView, visibility: QueueVisibility) -> QueueView:
@@ -153,10 +176,10 @@ class QueueService:
         )
 
     def archive(self, job_ids: Sequence[str]) -> QueueView:
-        return self._visible(self.storage.set_archived(job_ids, True), "main")
+        return self._visible(self._committed(self.storage.set_archived(job_ids, True)), "main")
 
     def restore(self, job_ids: Sequence[str]) -> QueueView:
-        return self._visible(self.storage.set_archived(job_ids, False), "main")
+        return self._visible(self._committed(self.storage.set_archived(job_ids, False)), "main")
 
     def _allocation(self, job: PublicJob) -> PublicJob:
         if job.state in {"starting", "running", "cancelling", "recovery_required"}:
@@ -172,7 +195,7 @@ class QueueService:
         relative_job_id: str | None = None,
     ) -> QueueView:
         return self._visible(
-            self.storage.move(job_id, direction, expected_revision, relative_job_id=relative_job_id),
+            self._committed(self.storage.move(job_id, direction, expected_revision, relative_job_id=relative_job_id)),
             "main",
         )
 

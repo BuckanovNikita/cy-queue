@@ -179,6 +179,7 @@ publisher.wait(timeout=5)
         assert _wait_for(tmp_path / "publication.done") == "published"
         assert not (tmp_path / "publisher.premature").exists()
         _wait_cancelled(store, processes)
+        assert store.view().jobs[0].error == "Job was cancelled"
         assert process_birth(publisher_pid) is None
         assert process_birth(late_pid) is None
         assert processes.reserved() == set()
@@ -250,3 +251,41 @@ def test_owner_signal_rejects_reused_birth_without_signalling_replacement() -> N
         if child.poll() is None:
             child.kill()
         child.wait(timeout=5)
+
+
+def _cancel_after_gated_spawn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Land the user's cancel after the gated child exists, before the guardian's cancel check."""
+    original = subprocess.Popen
+    patch = (
+        "from cy_queue.adapters.queue import guardian\n"
+        "persist = guardian._Guardian._persist\n"
+        "def cancel_after_spawn(self):\n"
+        "    persist(self)\n"
+        "    if self.child is not None:\n"
+        "        self.store.cancel(self.payload.job_id)\n"
+        "guardian._Guardian._persist = cancel_after_spawn\n"
+        "guardian.main()\n"
+    )
+
+    def launch(argv: list[str], **options: Any) -> subprocess.Popen[bytes]:
+        if argv[1:3] == ["-m", "cy_queue.adapters.queue.guardian"]:
+            argv = [argv[0], "-c", patch, argv[3]]
+        return original(argv, **options)
+
+    monkeypatch.setattr(subprocess, "Popen", launch)
+
+
+def test_cancel_during_launch_is_recorded_as_a_cancellation_before_native_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _cancel_after_gated_spawn(monkeypatch)
+    script = "import sys; from pathlib import Path; (Path(sys.argv[1]) / 'native.ran').write_text('ran')"
+    with _job(tmp_path, script) as (store, processes, _):
+        _wait_cancelled(store, processes)
+        job = store.view().jobs[0]
+        assert job.state == "cancelled"
+        # Same as the other cancels before native execution: no guardian failure text.
+        assert job.error is None
+        assert not (tmp_path / "native.ran").exists()
+        assert processes.reserved() == set()
+        assert processes.pool.claim_for(job.id) is None

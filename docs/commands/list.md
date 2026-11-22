@@ -94,7 +94,7 @@ my-queue | gpu-host | revision 4 | archived 1 | warnings 0
 | `pending` | Состояние; у архивного задания добавлено ` (archived)`, например `cancelled (archived)`. |
 | `request=` | [Запрос GPU](../../GLOSSARY.md#gpu-request): число GPU для `--gpus` или GPU через запятую для `--devices`. |
 | `allocation=` | [Выделенные GPU](../../GLOSSARY.md#allocation) (allocation) через запятую, `-`, если их нет. |
-| причина | [Причина ожидания](../../GLOSSARY.md#waiting-reason) (waiting reason) задания `pending`. У задания в другом состоянии здесь может остаться причина, которую worker записал, пока задание ждало, см. [формат JSON](../formats/json.md). |
+| причина | [Причина ожидания](../../GLOSSARY.md#waiting-reason) (waiting reason) задания `pending`. У задания в другом состоянии поле пустое. |
 | предупреждение | Только при сбое обновления: ещё одно поле после табуляции. |
 
 GPU локального хоста печатаются физическими номерами, как в `gpu list`. GPU, которую номером показать нельзя (например, на другом хосте), печатается [коротким именем](../../GLOSSARY.md#gpu-label) `gpu-<word>-<word>-<word>-<word>`.

@@ -33,6 +33,11 @@ from cy_queue.core.queue import GuardianClaim, JobState
 # Owner shutdown includes bounded SDK publication, console drain and native cleanup.
 # Keep this independent of those adapters so queue admission stays SDK-free.
 _OWNER_SHUTDOWN_GRACE_SECONDS = 90.0
+_CANCELLED_ERROR = "Job was cancelled"
+
+
+class _CancelledBeforeExecutionError(InterruptedError):
+    """The guardian's own cancel check stopped a launch whose native command never ran."""
 
 
 def _signal_owner(pid: int, born: int) -> bool:
@@ -215,7 +220,7 @@ class _Guardian:
         )
         self._persist()
         if self.store.cancelled(self.payload.job_id) or self.cancelled:
-            raise InterruptedError("Queue job cancelled before native execution")
+            raise _CancelledBeforeExecutionError("Queue job cancelled before native execution")
         if not allocation_available(self.payload.devices, max_used_memory_gib=self.payload.max_used_memory_gib):
             self._defer_start(
                 f"GPU memory is unavailable or at least {self.payload.max_used_memory_gib:g} GiB at startup"
@@ -343,8 +348,14 @@ class _Guardian:
             else ("completed" if self.failure is None and self.exit_code == 0 else "failed")
         )
         error = (
-            f"Guardian operation failed: {type(self.failure).__name__}"
+            # Like every other cancel before exec, a cancel caught by the launch check is no failure.
+            None
+            if isinstance(self.failure, _CancelledBeforeExecutionError) and state == "cancelled"
+            else f"Guardian operation failed: {type(self.failure).__name__}"
             if self.failure is not None
+            # Cancellation decides the outcome; the exit status after SIGTERM or tree cleanup says nothing more.
+            else _CANCELLED_ERROR
+            if state == "cancelled"
             else f"Native process exited with status {self.exit_code}"
             if self.exit_code
             else None

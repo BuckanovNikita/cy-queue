@@ -83,12 +83,12 @@
 | `request` | объект | [запрос GPU](../../GLOSSARY.md#gpu-request): `gpus` — число GPU или `null`; `devices` — список GPU по порядку или `null`. Заполнено ровно одно из двух |
 | `submitted_at` | число | время постановки в очередь, Unix time в секундах |
 | `submission_sequence` | число | номер `<N>` из `job-<N>` |
-| `updated_at` | число | время, когда worker или guardian последний раз записал состояние задания (запуск, завершение, перевод в `recovery_required`), Unix time; `0`, пока задание не запускалось. Его не меняют `cancel` (ни для `pending`, ни при переводе в `cancelling`), `recover`, причина ожидания и прогресс |
+| `updated_at` | число | время последней записи состояния задания, Unix time. Его ставят запуск, возврат в очередь, освобождение неиспользуемых GPU после этапа обучения пайплайна (задание остаётся `running`), завершение, `cancel` (переход в `cancelled` или `cancelling`), перевод в `recovery_required` и `recover`; `0`, пока состояние задания не менялось. Повторный `cancel` задания в `cancelling`, причина ожидания и прогресс его не меняют |
 | `state` | строка | [состояние](../commands/list.md): `pending`, `starting`, `running`, `cancelling`, `completed`, `failed`, `cancelled`, `recovery_required` |
 | `revision` | число | счётчик изменений этой записи задания (не путать с `revision` вида очереди) |
 | `devices` | список строк | [выделенные GPU (allocation)](../../GLOSSARY.md#allocation); пустой, пока задание их не держит |
-| `error` | строка или `null` | сообщение об ошибке задания |
-| `waiting_reason` | строка или `null` | [причина ожидания (waiting reason)](../../GLOSSARY.md#waiting-reason) задания `pending`; см. ниже, когда она актуальна |
+| `error` | строка или `null` | сообщение об ошибке задания. У задания, которое отменили после запуска его процесса, здесь `Job was cancelled`; у задания, отменённого до запуска (в `pending`, при подготовке, при отложенном старте или при проверке guardian перед запуском), `error` остаётся `null` (см. [Отмену](../commands/worker.md#отмена)) |
+| `waiting_reason` | строка или `null` | [причина ожидания (waiting reason)](../../GLOSSARY.md#waiting-reason) задания `pending`; у задания в другом состоянии `null`. Откуда берётся причина, см. ниже |
 | `progress` | строка, число или `null` | прогресс, который сообщает запущенное задание |
 | `clearml_url` | строка или `null` | ссылка на задачу ClearML |
 
@@ -110,7 +110,7 @@
 | `warning_count` | число | сколько элементов в `refresh_issues` |
 | `refresh_issues` | список | задания из `jobs`, чьё текущее состояние сейчас не удалось прочитать: `job_id` (полный ID), `reference` (`job-<N>`), `message` (текст, по умолчанию `Status unavailable; showing last recorded state`) |
 
-Какие задания попадают в `jobs`: `list` показывает вид, выбранный флагами `--archived` и `--all` (см. [list](../commands/list.md)); `move`, `archive` и `restore` всегда показывают обычный вид, без заданий в архиве. `waiting_reason`: `list` для своего хоста вычисляет текущую причину каждого задания `pending`. Остальные команды, а также `list --host` для другого хоста печатают причину, которую последней записал worker владельца, или `null`, если worker её ещё не записывал. У задания, которое уже вышло из `pending`, в поле может остаться последняя записанная причина; смотрите на `state`.
+Какие задания попадают в `jobs`: `list` показывает вид, выбранный флагами `--archived` и `--all` (см. [list](../commands/list.md)); `move`, `archive` и `restore` всегда показывают обычный вид, без заданий в архиве. `waiting_reason`: `list`, `move`, `archive` и `restore` для своего хоста вычисляют текущую причину каждого задания `pending`, а `devices` заданий `starting`, `running`, `cancelling` и `recovery_required` берут из резервов в каталоге координации. `list --host` для другого хоста, а также `list` для задания с предупреждением обновления печатают причину, которую последней записал worker владельца, или `null`, если worker её ещё не записывал. Если `move`, `archive` или `restore` уже записали изменение, а текущие значения прочитать не удалось (для `move`, например, из-за записи worker другой версии), изменение остаётся в силе, код завершения `0`, команда печатает записанные причины и GPU, а на stderr — одну строку журнала `<время> | WARNING  | cy_queue.application.queue:_committed:<строка> - Change applied; showing recorded waiting reasons and devices because current values are unavailable: <тип ошибки>: <сообщение>`. `archive` и `restore` читают очередь ещё и до записи; если не удалось это чтение, команда ничего не меняет, не выводит очередь, печатает на stderr `cy-queue: <ошибка>` и завершается с кодом `1`. У задания не в `pending` поле всегда `null`.
 
 ```json
 {"protocol": 1, "host_id": "<host-id>", "revision": 2, "jobs": [{"protocol": 1, "id": "<job-id>", "reference": "job-17", "state": "pending", "waiting_reason": "Owner worker unavailable", "archived": false}], "archived_count": 0, "warning_count": 0, "refresh_issues": []}
