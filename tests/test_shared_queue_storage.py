@@ -252,6 +252,27 @@ def test_repeated_cancel_of_a_cancelling_job_keeps_its_state_change_time(
     assert store.cancelled(job.id)
 
 
+def test_waiting_reason_and_progress_writes_keep_the_state_change_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    clock = [1_000.0]
+    monkeypatch.setattr(time, "time", lambda: clock[0])
+    store = _store(tmp_path / "queue")
+    pending, active = store.submit((_snapshot(tmp_path, "pending"), _snapshot(tmp_path, "active")))
+    # Give both records a non-zero state change time, so "unchanged" is observable.
+    store.update(pending.id, "pending")
+    store.update(active.id, "running", devices=("GPU-a",))
+    clock[0] = 2_000.0
+    store.set_waiting({pending.id: "Owner worker unavailable"})
+    store.publish_status(active.id, progress=0.5, clearml_url="https://clearml.example/task")
+    assert _raw(store, pending.id)["waiting_reason"] == "Owner worker unavailable"
+    assert _raw(store, pending.id)["updated_at"] == 1_000.0
+    assert _raw(store, active.id)["progress"] == 0.5
+    assert _raw(store, active.id)["updated_at"] == 1_000.0
+
+
 def test_recovery_records_the_state_change_time(tmp_path: Path) -> None:
     import time
 
