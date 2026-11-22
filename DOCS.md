@@ -161,7 +161,8 @@ owned job; `archive`/`restore` take owned finished jobs.
   reserved devices; `list --host` and jobs with a refresh warning show recorded values.
   After `move`, `archive` or `restore` has committed, a failed read of those values keeps
   the change and its exit status 0: the command shows recorded values and logs one warning
-  with the cause.
+  with the cause. CLI `archive`/`restore` also read the queue like `list` before writing;
+  a failure there changes nothing and exits 1.
 - One unreadable private status/snapshot keeps its public summary with a transient
   warning; healthy jobs keep refreshing. Warning counts cover visible jobs only and clear
   after a successful refresh. Queue-wide config/manifest/coordination failure is an
