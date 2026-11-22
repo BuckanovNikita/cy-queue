@@ -26,13 +26,13 @@ _Avoid_: lock directory, local root
 
 <a id="host-binding"></a>
 **Host binding**:
-The record `coordination-root.json` under `/tmp/clearml-yolo-queue/<host-id>/` that ties a host to one coordination root. Every subcommand except `config` checks it; a different coordination root fails with "Host coordination is already bound to another location".
+The record `coordination-root.json` under `/tmp/clearml-yolo-queue/<host-id>/` that ties a host to one coordination root. Every subcommand except `config` checks it; a different coordination root fails with "Host coordination is already bound to <bound>, not <selected>; set coordination_root to the bound location", which names the bound location.
 _Russian_: привязка хоста (host binding)
 _Avoid_: host lock, registration
 
 <a id="host-partition"></a>
 **Host partition**:
-The part of the queue root that belongs to one host; `list` shows the local host's partition, and `list --host` reads another host's partition without being able to change it. A job reference that is not in the local partition gives "Queue job is missing from the local host partition".
+The part of the queue root that belongs to one host; `list` shows the local host's partition, and `list --host` reads another host's partition without being able to change it. A job reference that is not in the local partition gives "Queue job reference is unknown in the local host partition; use job-N from list".
 _Russian_: раздел хоста (host partition)
 _Avoid_: shard, namespace
 

@@ -186,14 +186,18 @@ def test_readable_references_resolve_existing_ids_and_reject_ambiguity(tmp_path:
     assert resolve_job_reference((first, second), "job-2") == second
     assert resolve_job_reference((first, second), first.id) == first
     for reference in ("job-0", "job-99", "job-01", "unknown"):
-        with pytest.raises(ValueError, match=r"missing|reference"):
+        with pytest.raises(ValueError, match="reference is unknown") as unknown:
             resolve_job_reference((first, second), reference)
+        assert "missing" not in str(unknown.value)
+        assert "job-N from list" in str(unknown.value)
     with pytest.raises(ValueError, match="ambiguous"):
         resolve_job_reference((first, second.model_copy(update={"submission_sequence": 1})), "job-1")
     service = _service(store, tmp_path)
     assert service.cancel("job-2").id == second.id
     with pytest.raises(ValueError, match="requiring recovery"):
         service.recover("job-1")
+    with pytest.raises(ValueError, match="reference is unknown"):
+        service.processes.recover("no-such-id")
 
 
 def test_foreign_host_archive_visibility_is_read_only(tmp_path: Path) -> None:
@@ -205,7 +209,7 @@ def test_foreign_host_archive_visibility_is_read_only(tmp_path: Path) -> None:
     service = _service(other, tmp_path)
     assert service.list("archive-host").jobs == ()
     assert service.list("archive-host", visibility="archived").jobs[0].id == job.id
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(ValueError, match="reference is unknown"):
         service.restore(("job-1",))
 
 

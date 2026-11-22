@@ -83,7 +83,10 @@ def validate_snapshot(snapshot: JobSnapshot) -> None:
     if snapshot.package_identity != package_identity():
         raise ValueError("Queued package identity changed; resubmit with the current installation")
     if Path(snapshot.interpreter).absolute() != Path(sys.executable).absolute():
-        raise ValueError("Queued interpreter changed; run the worker in the submitting environment")
+        raise ValueError(
+            "Queued interpreter changed; the recorded interpreter started a different Python executable "
+            "(a launcher or an alias); resubmit with the real interpreter path"
+        )
     if not Path(snapshot.project_root).is_dir() or not Path(snapshot.cwd).is_dir():
         raise ValueError("Queued project or working directory is no longer available")
     if snapshot.command not in {"pipeline", "train"}:

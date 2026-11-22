@@ -30,6 +30,7 @@ from cy_queue.adapters.queue.storage import (
 from cy_queue.core.execution import DEFAULT_MAX_USED_MEMORY_GIB, AutoGPUControl
 from cy_queue.core.queue import (
     QUEUE_COMPATIBILITY,
+    UNKNOWN_JOB_REFERENCE,
     GPUObservation,
     GuardianClaim,
     JobSnapshot,
@@ -288,7 +289,7 @@ class QueueProcesses:
     def recover(self, identifier: str) -> PublicJob:
         jobs = {job.id: job for job in self.store.view().jobs}
         if identifier not in jobs:
-            raise ValueError("Queue job is missing from the local host partition")
+            raise ValueError(UNKNOWN_JOB_REFERENCE)
         job = jobs[identifier]
         if job.owner_uid != os.geteuid():
             raise PermissionError("Only the effective owner may recover this job")

@@ -41,7 +41,7 @@ cy-queue [--root ROOT] worker [-h] [--log-level {DEBUG,INFO,WARNING,ERROR}]
 
 1. Worker читает конфигурацию (`name`, `root`, `coordination_root`, `max_used_memory_gib`) один раз при запуске. Изменённый `queue.toml` подействует после перезапуска worker.
 2. Worker проверяет, что Python на этом хосте поддерживает надзор за процессами Linux. Если нет, он завершается с ошибкой.
-3. Worker регистрируется: на хосте может работать только один worker одного пользователя для одного [каталога очереди](../../GLOSSARY.md#queue-root) (queue root). Второй worker того же пользователя сразу завершается с кодом `1` и сообщением `One live queue worker per owner/root is already registered`. Worker другого пользователя не мешает вашему.
+3. Worker регистрируется: на хосте может работать только один worker одного пользователя для одного [каталога очереди](../../GLOSSARY.md#queue-root) (queue root). Второй worker того же пользователя сразу завершается с кодом `1` и сообщением `One live queue worker per owner/root is already registered`; строку `Starting queue worker` он не печатает. Worker другого пользователя не мешает вашему.
 4. Раз в секунду worker опрашивает очередь и отмечает, что он жив. Ваши задания в `list` считаются обслуживаемыми, пока последняя отметка не старше 10 секунд и процесс worker существует. Иначе у ожидающих заданий причина ожидания `Owner worker unavailable`.
 
 ### Выбор следующего задания
@@ -65,7 +65,7 @@ cy-queue [--root ROOT] worker [-h] [--log-level {DEBUG,INFO,WARNING,ERROR}]
 2. Worker запускает для задания отдельный процесс [guardian](../../GLOSSARY.md#guardian) в собственной сессии, отвязанный от терминала worker. Guardian занимает выбранные GPU и держит их резерв.
 3. Перед самым стартом guardian ещё раз читает память выделенных GPU. Если какая-то из них недоступна или занята не меньше порога, задание возвращается в `pending` с причиной `GPU memory is unavailable or at least <порог> GiB at startup`. Если резерв GPU успели снять (`gpu free`), причина будет `GPU allocation was freed before startup`. Если за это время задание отменили, оно становится `cancelled`.
 4. Задание переходит в `running`, и guardian запускает процесс задания.
-5. Процесс задания сверяет снимок с текущей установкой и завершается с ошибкой (задание станет `failed`, сообщение будет в журнале задания), если изменились версия или установка CY (`Queued package version changed; resubmit with the current installation`, `Queued package identity changed; resubmit with the current installation`), интерпретатор (`Queued interpreter changed; run the worker in the submitting environment`) или пропал [рабочий каталог (project)](../../GLOSSARY.md#project) (`Queued project or working directory is no longer available`).
+5. Процесс задания сверяет снимок с текущей установкой и завершается с ошибкой (задание станет `failed`, сообщение будет в журнале задания), если изменились версия или установка CY (`Queued package version changed; resubmit with the current installation`, `Queued package identity changed; resubmit with the current installation`), интерпретатор (`Queued interpreter changed; the recorded interpreter started a different Python executable (a launcher or an alias); resubmit with the real interpreter path`) или пропал [рабочий каталог (project)](../../GLOSSARY.md#project) (`Queued project or working directory is no longer available`).
 6. Затем процесс переходит в [текущий каталог (working directory)](../../GLOSSARY.md#working-directory), который был текущим при `submit`, и запускает команду CY (`pipeline` или `train`) интерпретатором из снимка, с замороженной конфигурацией, в которой устройства привязаны к выделенным GPU: обучение получает все выделенные GPU, предсказание, сравнение и экспорт — первую из них. Фазы, где явно указан `cpu`, остаются на CPU.
 
 Если guardian не перевёл задание из `starting` за 10 секунд или его процесс исчез сразу после запуска, задание становится `recovery_required`.
@@ -136,7 +136,7 @@ Worker пишет журнал в stderr строками вида `ГГГГ-М�
 
 | Запись | Уровень | Когда |
 | --- | --- | --- |
-| `Starting queue worker \| queue=<name> root=<root> host=<host> uid=<uid> max_used_memory_gib=<порог>` | `INFO` | При запуске. |
+| `Starting queue worker \| queue=<name> root=<root> host=<host> uid=<uid> max_used_memory_gib=<порог>` | `INFO` | После регистрации worker, один раз; отказанный второй worker её не печатает. |
 | `Job <N> · <имя> \| state=<state> \| request=<запрос> \| allocation=<GPU>` и, если есть, `\| waiting=<причина>`, `\| progress=<прогресс>`, `\| error=<ошибка>` | `INFO`; `ERROR` для `failed` и `recovery_required` | Когда у вашего задания меняется состояние, GPU, причина ожидания, прогресс или ошибка. Уже завершённые задания при запуске worker не повторяются. |
 | `Worker heartbeat \| active \| <state>=<число> ...` или `Worker heartbeat \| idle \| no jobs` | `INFO` | При первом опросе и затем не чаще раза в 60 секунд. `active`, если у вас есть задания в `pending`, `starting`, `running`, `cancelling` или `recovery_required`. |
 | `Worker poll \| host=<host> uid=<uid> \| <state>=<число> ...` | `DEBUG` | На каждом опросе. |

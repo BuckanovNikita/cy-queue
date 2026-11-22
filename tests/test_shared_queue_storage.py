@@ -81,7 +81,7 @@ def test_foreign_host_is_view_only_and_corrupt_public_record_blocks(tmp_path: Pa
     other_host = _store(tmp_path / "queue", "other-host")
     assert other_host.view().jobs == ()
     assert other_host.view("test-host").jobs[0].id == job.id
-    with pytest.raises(ValueError, match="missing"):
+    with pytest.raises(ValueError, match="reference is unknown"):
         other_host.cancel(job.id)
     store.public_path(job.id).write_text('{"protocol":999}')
     with pytest.raises(RuntimeError, match=r"corrupt|protocol"):

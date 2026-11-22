@@ -4,12 +4,13 @@ import os
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from loguru import logger
 
-from cy_queue.core.queue import PublicJob, QueueView, ResourceRequest
+from cy_queue.core.queue import PublicJob, QueueView, ResourceRequest, WorkerIdentity
 from queue_cli_helpers import queue_command, queue_environment
 
 
@@ -243,3 +244,37 @@ def test_failed_worker_does_not_claim_clean_shutdown(
         logger.remove(sink)
     assert "Queue worker stopped" not in "".join(messages)
     assert not (store.actor_root / "worker.json").exists()
+
+
+class _FakeService:
+    """Stand-in for QueueService.worker: registration either refuses or accepts."""
+
+    def __init__(self, *, refuse: bool) -> None:
+        self.refuse = refuse
+        self.identity = WorkerIdentity(owner_uid=7, host_id="host", boot_id="boot")
+
+    def worker(self, stop: object, *, observe: Callable[[QueueView], None]) -> None:
+        del stop
+        if self.refuse:
+            raise RuntimeError("One live queue worker per owner/root is already registered")
+        observe(QueueView(host_id="host", revision=1, jobs=()))
+
+
+@pytest.mark.parametrize("refuse", [True, False])
+def test_start_line_is_logged_only_for_an_accepted_worker(refuse: bool) -> None:
+    from cy_queue.entrypoints import queue
+
+    messages: list[str] = []
+    sink = logger.add(messages.append, format="{message}", level="INFO")
+    try:
+        start = "Starting queue worker | queue=Test root=/q host=h uid=7 max_used_memory_gib=2.0"
+        service = _FakeService(refuse=refuse)
+        if refuse:
+            with pytest.raises(RuntimeError, match="already registered"):
+                queue._worker(service, start_message=start)  # type: ignore[arg-type]  # fake service
+        else:
+            queue._worker(service, start_message=start)  # type: ignore[arg-type]  # fake service
+    finally:
+        logger.remove(sink)
+    started = [message for message in messages if "Starting queue worker" in message]
+    assert started == ([] if refuse else [start + "\n"])

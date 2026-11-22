@@ -240,6 +240,7 @@ def test_cli_configuration_controls_admission_and_guardian_startup(
         _root: Path,
         *,
         presentation: QueuePresentation | None = None,
+        worker_start_message: str | None = None,
     ) -> None:
         assert isinstance(service.processes, QueueProcesses)
         processes = service.processes

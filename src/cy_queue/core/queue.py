@@ -144,6 +144,9 @@ class ArchiveRecord(QueueRecord):
     updated_at: float
 
 
+UNKNOWN_JOB_REFERENCE = "Queue job reference is unknown in the local host partition; use job-N from list"
+
+
 def resolve_job_reference(jobs: Sequence[PublicJob], reference: str) -> PublicJob:
     """Resolve immutable submission numbers or compatible exact internal identifiers."""
     match = re.fullmatch(r"job-([1-9][0-9]*)", reference)
@@ -153,7 +156,7 @@ def resolve_job_reference(jobs: Sequence[PublicJob], reference: str) -> PublicJo
         else [job for job in jobs if job.id == reference]
     )
     if not matches:
-        raise ValueError("Queue job is missing from the local host partition; use job-N from list")
+        raise ValueError(UNKNOWN_JOB_REFERENCE)
     if len(matches) != 1:
         raise ValueError("Queue job reference is ambiguous; refresh the queue")
     return matches[0]
