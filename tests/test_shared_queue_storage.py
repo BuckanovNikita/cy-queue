@@ -229,6 +229,29 @@ def test_cancel_of_recovery_required_job_keeps_the_record_unchanged(tmp_path: Pa
     assert store.public_path(job.id).read_bytes() == stored
 
 
+def test_repeated_cancel_of_a_cancelling_job_keeps_its_state_change_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import time
+
+    clock = [1_000.0]
+    monkeypatch.setattr(time, "time", lambda: clock[0])
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    store.update(job.id, "running", devices=("GPU-a",))
+    clock[0] = 2_000.0
+    first = store.cancel(job.id)
+    assert first.state == "cancelling"
+    assert first.updated_at == 2_000.0
+    clock[0] = 3_000.0
+    second = store.cancel(job.id)
+    assert second.state == "cancelling"
+    assert second.updated_at == 2_000.0
+    assert _raw(store, job.id)["updated_at"] == 2_000.0
+    assert _raw(store, job.id)["state"] == "cancelling"
+    assert store.cancelled(job.id)
+
+
 def test_recovery_records_the_state_change_time(tmp_path: Path) -> None:
     import time
 

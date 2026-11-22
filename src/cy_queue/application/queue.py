@@ -4,6 +4,8 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from typing import Protocol
 
+from loguru import logger
+
 from cy_queue.core.queue import (
     TERMINAL_JOB_STATES,
     GPUControlStatus,
@@ -139,6 +141,20 @@ class QueueService:
                 jobs.append(self._allocation(job))
         return view.model_copy(update={"jobs": tuple(jobs)})
 
+    def _committed(self, view: QueueView) -> QueueView:
+        """Present a committed change; its success never depends on reading current values."""
+        try:
+            return self._current(view)
+        except (OSError, ValueError, RuntimeError) as error:
+            # The change is already durable, so failing here would report an applied change as failed.
+            logger.warning(
+                "Change applied; showing recorded waiting reasons and devices because current values "
+                "are unavailable: {}: {}",
+                type(error).__name__,
+                error,
+            )
+            return view
+
     @staticmethod
     def _visible(view: QueueView, visibility: QueueVisibility) -> QueueView:
         if visibility not in {"main", "archived", "all"}:
@@ -160,10 +176,10 @@ class QueueService:
         )
 
     def archive(self, job_ids: Sequence[str]) -> QueueView:
-        return self._visible(self._current(self.storage.set_archived(job_ids, True)), "main")
+        return self._visible(self._committed(self.storage.set_archived(job_ids, True)), "main")
 
     def restore(self, job_ids: Sequence[str]) -> QueueView:
-        return self._visible(self._current(self.storage.set_archived(job_ids, False)), "main")
+        return self._visible(self._committed(self.storage.set_archived(job_ids, False)), "main")
 
     def _allocation(self, job: PublicJob) -> PublicJob:
         if job.state in {"starting", "running", "cancelling", "recovery_required"}:
@@ -179,7 +195,7 @@ class QueueService:
         relative_job_id: str | None = None,
     ) -> QueueView:
         return self._visible(
-            self._current(self.storage.move(job_id, direction, expected_revision, relative_job_id=relative_job_id)),
+            self._committed(self.storage.move(job_id, direction, expected_revision, relative_job_id=relative_job_id)),
             "main",
         )
 

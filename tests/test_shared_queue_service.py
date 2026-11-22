@@ -334,3 +334,66 @@ def test_move_archive_and_restore_print_the_waiting_reasons_list_prints(tmp_path
     assert reasons(service.archive((finished.id,))) == expected
     assert reasons(service.restore((finished.id,))) == expected
     assert reasons(service.list()) == expected
+
+
+def test_move_archive_and_restore_succeed_with_the_recorded_view_when_worker_records_are_unreadable(
+    tmp_path: Path,
+) -> None:
+    from loguru import logger
+
+    from cy_queue.adapters.queue.records import WorkerRecord
+    from cy_queue.adapters.queue.runtime import QueueProcesses
+    from cy_queue.adapters.queue.storage import NFSQueueStore
+    from cy_queue.application.queue import QueueService
+    from cy_queue.core.queue import GPUObservation, JobSnapshot, WorkerIdentity
+
+    class Inventory:
+        def snapshot(self) -> tuple[GPUObservation, ...]:
+            raise AssertionError("Queue mutations must not perform GPU discovery")
+
+    identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
+    store = NFSQueueStore(tmp_path / "queue", identity)
+    processes = QueueProcesses(store, identity, local_root=tmp_path / "local")
+    service = QueueService(store, Inventory(), processes, identity)
+    snapshot = JobSnapshot(
+        command="train",
+        config_json="{}",
+        project_root=str(tmp_path),
+        cwd=str(tmp_path),
+        interpreter=sys.executable,
+        package_version="1",
+        package_identity="hash",
+    )
+    finished, first, second = service.submit((snapshot, snapshot, snapshot))
+    store.update(finished.id, "completed")
+    store.set_waiting({first.id: "Recorded reason", second.id: "Recorded reason"})
+    # Another release of the worker on this host makes the inventory read fail.
+    record = WorkerRecord(identity=identity, pid=1, born=1, heartbeat=0, compatibility="other-protocol")
+    (store.actor_root / "worker.json").write_text(record.model_dump_json(), encoding="utf-8")
+    with pytest.raises(RuntimeError, match="incompatible worker protocol"):
+        service.list()
+
+    messages: list[str] = []
+    sink = logger.add(messages.append, format="{level}: {message}", level="WARNING")
+    try:
+        moved = service.move(second.id, "top", store.view().revision)
+        archived = service.archive((finished.id,))
+        restored = service.restore((finished.id,))
+    finally:
+        logger.remove(sink)
+
+    order = [job.id for job in store.view().jobs]
+    # The move committed: the second pending job now runs before the first.
+    assert order.index(second.id) < order.index(first.id)
+    assert [job.id for job in moved.jobs] == order
+    assert [job.id for job in archived.jobs] == [job for job in order if job != finished.id]
+    assert archived.archived_job_ids == (finished.id,)
+    assert [job.id for job in restored.jobs] == order
+    assert restored.archived_job_ids == ()
+    assert store.view().archived_job_ids == ()
+    for view in (moved, archived, restored):
+        assert {job.waiting_reason for job in view.jobs if job.state == "pending"} == {"Recorded reason"}
+    assert len(messages) == 3
+    assert all(message.startswith("WARNING: ") for message in messages)
+    assert all("An incompatible worker protocol stops queue admission" in message for message in messages)
+    assert all("recorded" in message for message in messages)

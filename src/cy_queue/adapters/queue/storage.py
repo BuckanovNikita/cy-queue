@@ -560,14 +560,12 @@ class NFSQueueStore:
                 atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
                 return job
             state: JobState = "cancelled" if job.state == "pending" else "cancelling"
-            result = job.model_copy(
-                update={
-                    "state": state,
-                    "revision": job.revision + 1,
-                    "updated_at": time.time(),
-                    "waiting_reason": None,
-                }
-            )
+            values: dict[str, object] = {"state": state, "revision": job.revision + 1, "waiting_reason": None}
+            if state != job.state:
+                # A repeated cancel is no state change: keeping updated_at stops it from
+                # extending the worker's startup window before an uncertain start is recovered.
+                values["updated_at"] = time.time()
+            result = job.model_copy(update=values)
             atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
             atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
             return result
