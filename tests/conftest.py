@@ -35,6 +35,18 @@ def restore_clearml_owner_isolation(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def isolate_host_coordination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep in-process locks and namespaces out of the real host-wide directory.
+
+    Subprocesses do not see this patch, and `monkeypatch.undo()` removes it, so their
+    scripts and records pass an explicit local root.
+    """
+    from cy_queue.adapters.queue import coordination
+
+    monkeypatch.setattr(coordination, "_DEFAULT_ROOT", tmp_path / "host-coordination")
+
+
+@pytest.fixture(autouse=True)
 def restore_runtime_configuration(tmp_path: Path) -> Iterator[None]:
     """Programmatic initialization persists intentionally, but not across test cases."""
     environment = dict(os.environ)

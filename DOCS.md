@@ -72,6 +72,16 @@ owned job; `archive`/`restore` take owned finished jobs.
 - `move JOB up|down|top|bottom|before|after [REL] --revision N`: stale revisions rejected.
 - `gpu` selectors are physical NVML indexes (re-resolve after hardware change or reboot)
   or short labels; absent devices get distinct aliases and older aliases stay valid.
+- `config` text prints the user's paths as is, so they can be copied; only `name` goes
+  through public text masking. `config --json` prints every value as is. `cy-queue:` error
+  lines stay masked for every subcommand.
+- `list --host`: the text header names only the local host; any other value shows
+  `Remote host`. A missing partition is an empty list with exit 0.
+- `cancel` of a `recovery_required` job writes the cancel marker and keeps the state; text
+  mode adds one stderr line that `recover` is needed. `--json` and the exit code are as
+  for any cancel.
+- Worker log: a job line is `ERROR` only when the job enters `failed` or
+  `recovery_required` or its error text changes; other changes of such a job log `INFO`.
 
 ## Submission and scheduling
 

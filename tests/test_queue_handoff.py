@@ -174,7 +174,8 @@ def _guardian(directory: Path) -> "_Guardian":
     from cy_queue.core.queue import JobSnapshot
 
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
-    store = NFSQueueStore(directory / "queue", identity)
+    # An explicit local root keeps the guardian isolated even after a test undoes its monkeypatches.
+    store = NFSQueueStore(directory / "queue", identity, local_root=directory / "local")
     job = store.submit(
         (
             JobSnapshot(
@@ -204,6 +205,7 @@ def _guardian(directory: Path) -> "_Guardian":
             cwd=str(directory),
             project_root=str(directory),
             start_gate=str(directory / "gate"),
+            local_root=str(directory / "local"),
         ).model_dump_json()
     )
     guardian = _Guardian(path)

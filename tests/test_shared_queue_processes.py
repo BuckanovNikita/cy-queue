@@ -388,7 +388,7 @@ from cy_queue.adapters.queue.runtime import QueueProcesses
 from cy_queue.adapters.queue.storage import NFSQueueStore
 from cy_queue.core.queue import WorkerIdentity
 identity=WorkerIdentity(owner_uid=os.geteuid(),host_id="host",boot_id="boot")
-store=NFSQueueStore(Path(sys.argv[1]),identity)
+store=NFSQueueStore(Path(sys.argv[1]),identity,local_root=Path(sys.argv[2]))
 script=("import os,sys,time; from pathlib import Path; "
         "Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)")
 processes=QueueProcesses(store,identity,local_root=Path(sys.argv[2]),

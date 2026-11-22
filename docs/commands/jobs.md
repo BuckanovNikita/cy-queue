@@ -131,7 +131,14 @@ cy-queue cancel [-h] [--json] JOB
 Job 17 · my-run: cancelled
 ```
 
-С `--json` печатается запись задания ([JSON](../formats/json.md)). Дальше следите за заданием через `cy-queue list`.
+Если задание осталось в `recovery_required`, команда печатает ту же строку, а в stderr добавляет подсказку:
+
+```text
+Job 17 · my-run: recovery_required
+cy-queue: job-17 stays recovery_required; run cy-queue recover job-17 to stop what is left of it
+```
+
+С `--json` печатается запись задания ([JSON](../formats/json.md)), подсказки нет. Дальше следите за заданием через `cy-queue list`.
 
 #### Коды завершения
 

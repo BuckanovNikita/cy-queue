@@ -152,6 +152,72 @@ def test_worker_logs_changes_and_heartbeat_without_timestamp_noise(
         logger.remove(sink)
 
 
+def test_worker_logs_error_only_when_a_job_enters_a_failure_state_or_its_error_changes() -> None:
+    from cy_queue.entrypoints import queue
+    from cy_queue.entrypoints.queue_presentation import QueuePresentation
+
+    messages: list[str] = []
+    sink = logger.add(
+        messages.append,
+        format="{level}: {message}",
+        level="INFO",
+        filter=lambda record: record["message"].startswith("Job "),
+    )
+
+    def observer() -> queue._WorkerLog:
+        return queue._WorkerLog(owner_uid=7, presentation=QueuePresentation({"GPU-one": 2}, host_id="host"))
+
+    def levels(log: queue._WorkerLog, *jobs: PublicJob) -> list[str]:
+        observed: list[str] = []
+        for job in jobs:
+            messages.clear()
+            log(QueueView(host_id="host", revision=1, jobs=(job,)))
+            assert len(messages) == 1
+            observed.append(messages[0].split(":", 1)[0])
+        return observed
+
+    try:
+        running = PublicJob(
+            id="own-job",
+            submission_sequence=17,
+            label="Run",
+            owner_uid=7,
+            host_id="host",
+            boot_id="boot",
+            command="train",
+            request=ResourceRequest(gpus=1),
+            submitted_at=0,
+            state="running",
+            devices=("GPU-one",),
+            progress="Training step 1",
+        )
+        lost = running.model_copy(update={"state": "recovery_required", "error": "Guardian exited"})
+        later = lost.model_copy(update={"progress": "Training step 2"})
+        released = later.model_copy(update={"devices": ()})
+        cleanup = released.model_copy(update={"error": "Cleanup failed"})
+        failed = cleanup.model_copy(update={"state": "failed"})
+        failed_later = failed.model_copy(update={"progress": "Training step 3"})
+        assert levels(observer(), running, lost, later, released, cleanup, failed, failed_later) == [
+            "INFO",
+            "ERROR",
+            "INFO",
+            "INFO",
+            "ERROR",
+            "ERROR",
+            "INFO",
+        ]
+        restarted = observer()
+        assert levels(restarted, lost, later) == ["ERROR", "INFO"]
+        assert messages == [
+            (
+                "INFO: Job 17 · Run | state=recovery_required | request=1 | allocation=2 | "
+                "progress=Training step 2 | error=Guardian exited\n"
+            )
+        ]
+    finally:
+        logger.remove(sink)
+
+
 def test_completed_history_is_counted_without_replaying_old_jobs() -> None:
     from cy_queue.entrypoints.queue import _WorkerLog
 

@@ -276,7 +276,7 @@ class NoGPUs:
     def snapshot(self): return ()
 root = Path(sys.argv[1])
 identity = WorkerIdentity.model_validate_json(sys.argv[2])
-store = NFSQueueStore(root / 'queue', identity)
+store = NFSQueueStore(root / 'queue', identity, local_root=root/'local')
 processes = QueueProcesses(store, identity, local_root=root/'local')
 service = QueueService(store, NoGPUs(), processes, identity)
 print(service.list().model_dump_json())

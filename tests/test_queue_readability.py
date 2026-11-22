@@ -117,6 +117,92 @@ def test_config_inspection_is_read_only_and_help_needs_no_config(tmp_path: Path)
             assert "CY_QUEUE_CONFIG" in result.stderr
 
 
+def test_config_text_prints_copyable_paths_and_masks_only_the_name(tmp_path: Path) -> None:
+    environment = queue_environment(tmp_path)
+    root = tmp_path / str(uuid4()) / "queue"
+    coordination = tmp_path / ("c" * 64) / "locks"
+    config = Path(environment["CY_QUEUE_CONFIG"])
+    config.write_text(
+        f'[queue]\nname = "Queue {"d" * 64}"\nroot = {json.dumps(str(root))}\n'
+        f"coordination_root = {json.dumps(str(coordination))}\n",
+        encoding="utf-8",
+    )
+
+    def run(*arguments: str) -> str:
+        result = subprocess.run(  # noqa: S603 - isolated real CLI
+            [*queue_command(tmp_path), "config", *arguments],
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
+
+    lines = run().splitlines()
+    assert lines[:4] == [
+        "name: Queue <redacted>",
+        f"root: {root}",
+        f"coordination root: {coordination}",
+        f"config path: {config}",
+    ]
+    values = json.loads(run("--json"))
+    assert values["name"] == f"Queue {'d' * 64}"
+    assert values["root"] == str(root)
+    assert values["coordination_root"] == str(coordination)
+
+
+def test_list_of_another_host_shows_remote_host_header(tmp_path: Path) -> None:
+    result = subprocess.run(  # noqa: S603 - isolated real CLI
+        [*queue_command(tmp_path), "list", "--host", "nosuchhost"],
+        env=queue_environment(tmp_path),
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "Test queue | Remote host | revision 0 | archived 0 | warnings 0\n"
+
+
+def test_cancel_of_recovery_required_job_hints_at_recover_in_text_mode_only(tmp_path: Path) -> None:
+    from cy_queue.adapters.queue.identity import current_identity
+    from cy_queue.adapters.queue.storage import NFSQueueStore
+
+    environment = queue_environment(tmp_path)
+    command = queue_command(tmp_path)
+
+    def run(*arguments: str) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(  # noqa: S603 - isolated real CLI
+            [*command, *arguments],
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        return result
+
+    run("submit", "--gpus", "1", "--label", "Lost run", "--", "-m", "ground_truth=input.csv", "ultralytics.epochs=1,2")
+    store = NFSQueueStore(tmp_path / "queue", current_identity(), local_root=tmp_path / "locks")
+    lost = store.view().jobs[0]
+    store.update(lost.id, "recovery_required")
+    text = run("cancel", "job-1")
+    assert text.stdout == "Job 1 · Lost run: recovery_required\n"
+    assert text.stderr == (
+        "cy-queue: job-1 stays recovery_required; run cy-queue recover job-1 to stop what is left of it\n"
+    )
+    assert store.cancelled(lost.id)
+    machine = run("cancel", "job-1", "--json")
+    assert json.loads(machine.stdout)["state"] == "recovery_required"
+    assert machine.stderr == ""
+    pending = run("cancel", "job-2")
+    assert pending.stdout == "Job 2 · Lost run: cancelled\n"
+    assert pending.stderr == ""
+
+
 def test_real_cli_readable_submit_archive_restore(tmp_path: Path) -> None:
     environment = queue_environment(tmp_path)
     command = queue_command(tmp_path)

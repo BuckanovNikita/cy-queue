@@ -137,12 +137,12 @@ Worker пишет журнал в stderr строками вида `ГГГГ-М�
 | Запись | Уровень | Когда |
 | --- | --- | --- |
 | `Starting queue worker \| queue=<name> root=<root> host=<host> uid=<uid> max_used_memory_gib=<порог>` | `INFO` | При первом опросе очереди после принятой регистрации worker, один раз. Её нет у отказанного второго worker и у worker, чьё первое чтение очереди не удалось. |
-| `Job <N> · <имя> \| state=<state> \| request=<запрос> \| allocation=<GPU>` и, если есть, `\| waiting=<причина>`, `\| progress=<прогресс>`, `\| error=<ошибка>` | `INFO`; `ERROR` для `failed` и `recovery_required` | Когда у вашего задания меняется состояние, GPU, причина ожидания, прогресс или ошибка. Уже завершённые задания при запуске worker не повторяются. |
+| `Job <N> · <имя> \| state=<state> \| request=<запрос> \| allocation=<GPU>` и, если есть, `\| waiting=<причина>`, `\| progress=<прогресс>`, `\| error=<ошибка>` | `INFO`; `ERROR`, когда задание переходит в `failed` или `recovery_required` или у такого задания меняется ошибка | Когда у вашего задания меняется состояние, GPU, причина ожидания, прогресс или ошибка. Если у задания в `failed` или `recovery_required` меняется что-то, кроме состояния и ошибки (например, оставшиеся процессы продолжают писать прогресс), строка пишется с уровнем `INFO`. При запуске worker задание, которое уже в `recovery_required`, один раз пишется с уровнем `ERROR`. Уже завершённые задания при запуске worker не повторяются. |
 | `Worker heartbeat \| active \| <state>=<число> ...` или `Worker heartbeat \| idle \| no jobs` | `INFO` | При первом опросе и затем не чаще раза в 60 секунд. `active`, если у вас есть задания в `pending`, `starting`, `running`, `cancelling` или `recovery_required`. |
 | `Worker poll \| host=<host> uid=<uid> \| <state>=<число> ...` | `DEBUG` | На каждом опросе. |
 | `Queue worker stopped; active jobs remain supervised by their guardians` | `INFO` | После остановки сигналом. |
 
-Уровень `--log-level` оставляет записи этого уровня и выше: `DEBUG` показывает всё, `INFO` всё, кроме опросов, `WARNING` и `ERROR` только строки заданий уровня `ERROR`. GPU в журнале названы физическими номерами или [короткими именами](../../GLOSSARY.md#gpu-label).
+Уровень `--log-level` оставляет записи этого уровня и выше: `DEBUG` показывает всё, `INFO` всё, кроме опросов, `WARNING` и `ERROR` только строки заданий уровня `ERROR`, то есть переходы в `failed` и `recovery_required` и смену ошибки. GPU в журнале названы физическими номерами или [короткими именами](../../GLOSSARY.md#gpu-label).
 
 ## Результат
 
