@@ -41,7 +41,7 @@ cy-queue [--root ROOT] worker [-h] [--log-level {DEBUG,INFO,WARNING,ERROR}]
 
 1. Worker читает конфигурацию (`name`, `root`, `coordination_root`, `max_used_memory_gib`) один раз при запуске. Изменённый `queue.toml` подействует после перезапуска worker.
 2. Worker проверяет, что Python на этом хосте поддерживает надзор за процессами Linux. Если нет, он завершается с ошибкой.
-3. Worker регистрируется: на хосте может работать только один worker одного пользователя для одного [каталога очереди](../../GLOSSARY.md#queue-root) (queue root). Второй worker того же пользователя сразу завершается с кодом `1` и сообщением `One live queue worker per owner/root is already registered`; строку `Starting queue worker` он не печатает. Worker другого пользователя не мешает вашему.
+3. Worker регистрируется: на хосте может работать только один worker одного пользователя для одного [каталога очереди](../../GLOSSARY.md#queue-root) (queue root). Второй worker того же пользователя сразу завершается с кодом `1` и сообщением `One live queue worker per owner/root is already registered`; строку `Starting queue worker` он не печатает. Эту строку worker печатает не сразу после регистрации, а при первом опросе очереди; если регистрация принята, но первое чтение очереди не удалось, строки нет. Worker другого пользователя не мешает вашему.
 4. Раз в секунду worker опрашивает очередь и отмечает, что он жив. Ваши задания в `list` считаются обслуживаемыми, пока последняя отметка не старше 10 секунд и процесс worker существует. Иначе у ожидающих заданий причина ожидания `Owner worker unavailable`.
 
 ### Выбор следующего задания
@@ -136,7 +136,7 @@ Worker пишет журнал в stderr строками вида `ГГГГ-М�
 
 | Запись | Уровень | Когда |
 | --- | --- | --- |
-| `Starting queue worker \| queue=<name> root=<root> host=<host> uid=<uid> max_used_memory_gib=<порог>` | `INFO` | После регистрации worker, один раз; отказанный второй worker её не печатает. |
+| `Starting queue worker \| queue=<name> root=<root> host=<host> uid=<uid> max_used_memory_gib=<порог>` | `INFO` | При первом опросе очереди после принятой регистрации worker, один раз. Её нет у отказанного второго worker и у worker, чьё первое чтение очереди не удалось. |
 | `Job <N> · <имя> \| state=<state> \| request=<запрос> \| allocation=<GPU>` и, если есть, `\| waiting=<причина>`, `\| progress=<прогресс>`, `\| error=<ошибка>` | `INFO`; `ERROR` для `failed` и `recovery_required` | Когда у вашего задания меняется состояние, GPU, причина ожидания, прогресс или ошибка. Уже завершённые задания при запуске worker не повторяются. |
 | `Worker heartbeat \| active \| <state>=<число> ...` или `Worker heartbeat \| idle \| no jobs` | `INFO` | При первом опросе и затем не чаще раза в 60 секунд. `active`, если у вас есть задания в `pending`, `starting`, `running`, `cancelling` или `recovery_required`. |
 | `Worker poll \| host=<host> uid=<uid> \| <state>=<число> ...` | `DEBUG` | На каждом опросе. |
