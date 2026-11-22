@@ -140,9 +140,30 @@ def _presentation(host_id: str, *, queue_name: str = "Queue") -> QueuePresentati
     )
 
 
+def _gpu_count_request(gpus: int) -> ResourceRequest:
+    if gpus < 1:
+        raise ValueError("--gpus must be a positive integer")
+    from cy_queue.adapters.runtime.gpu_resources import GPUInventory
+
+    try:
+        available = len(GPUInventory().physical_uuids())
+    except RuntimeError as error:
+        # An unreadable inventory keeps the previous unchecked submission.
+        logger.warning(
+            "{}",
+            QueuePresentation().text(
+                f"--gpus {gpus} was not checked against the host GPU count, which is unavailable: {error}"
+            ),
+        )
+    else:
+        if gpus > available:
+            raise ValueError(f"--gpus {gpus} exceeds the {available} GPU(s) on this host")
+    return ResourceRequest(gpus=gpus)
+
+
 def _resource_request(arguments: argparse.Namespace) -> ResourceRequest:
     if arguments.devices is None:
-        return ResourceRequest(gpus=arguments.gpus)
+        return _gpu_count_request(arguments.gpus)
     from cy_queue.adapters.runtime.gpu_resources import GPUInventory
 
     try:

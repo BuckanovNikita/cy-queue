@@ -6,7 +6,8 @@ import inspect
 import json
 import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
 from copy import deepcopy
 from importlib.metadata import distributions, version
 from importlib.util import find_spec
@@ -37,6 +38,7 @@ from hydra import initialize, initialize_config_dir
 from hydra.core.hydra_config import HydraConfig
 from hydra_zen import store
 from omegaconf import DictConfig, OmegaConf, open_dict
+from omegaconf.errors import MissingMandatoryValue
 from pydantic import TypeAdapter, ValidationError
 
 from cy_queue.core.queue import JobSnapshot, ResourceRequest
@@ -236,6 +238,16 @@ def _resolved(
         HydraConfig.instance().cfg = previous
 
 
+@contextmanager
+def _mandatory_settings() -> Iterator[None]:
+    """Name a missing mandatory CY setting in one user-facing line instead of a traceback."""
+    try:
+        yield
+    except MissingMandatoryValue as error:
+        key = error.full_key or "<unknown key>"
+        raise ValueError(f"Missing mandatory setting {key}; add the override {key}=<value>") from error
+
+
 def compose_snapshots(
     arguments: Sequence[str],
     request: ResourceRequest,
@@ -257,7 +269,7 @@ def compose_snapshots(
     )
     identity = package_identity()
     snapshots: list[JobSnapshot] = []
-    with context:
+    with context, _mandatory_settings():
         multirun, jobs = compose_jobs(options.config_name, overrides, multirun=options.multirun)
         multirun_tag = new_multirun_tag() if multirun else None
         for index, config in enumerate(jobs):
