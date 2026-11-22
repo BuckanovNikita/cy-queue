@@ -4,11 +4,14 @@ import asyncio
 import json
 import subprocess
 from pathlib import Path
+from typing import Literal
 
 import pytest
 from omegaconf import OmegaConf
 
 from queue_cli_helpers import queue_command, queue_environment
+
+Command = Literal["pipeline", "train"]
 
 
 def test_queue_bindings_preserve_native_settings_and_explicit_cpu() -> None:
@@ -132,9 +135,30 @@ def test_sweep_freezes_hydra_output_and_logging_configuration(tmp_path: Path) ->
         assert settings["job_logging"]["disable_existing_loggers"] is True
 
 
+def _two_gpu_environment(root: Path) -> dict[str, str]:
+    memory = root / "two-gpu-memory.json"
+    memory.write_text(json.dumps({"GPU-test-a": 0, "GPU-test-b": 0}))
+    return queue_environment(root) | {"CY_TEST_QUEUE_MEMORY": str(memory)}
+
+
+def _submit_cli(
+    root: Path,
+    *arguments: str,
+    environment: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(  # noqa: S603 - fixed package CLI and isolated local records
+        [*queue_command(root), "submit", *arguments],
+        env=environment or queue_environment(root),
+        text=True,
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+
+
 def test_cli_submits_lists_reorders_and_cancels_without_runtime(tmp_path: Path) -> None:
     command = queue_command(tmp_path)
-    environment = queue_environment(tmp_path)
+    environment = _two_gpu_environment(tmp_path)
 
     def run(*arguments: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(  # noqa: S603 - fixed package CLI and isolated local records
@@ -223,6 +247,91 @@ def test_invalid_sweep_does_not_commit_partial_batch(tmp_path: Path, overrides: 
     assert result.returncode != 0
     assert "CY_QUEUE_CONFIG" not in result.stderr
     assert not list((tmp_path / "queue").rglob("snapshot.json"))
+
+
+@pytest.mark.parametrize("command", ["pipeline", "train"])
+def test_missing_mandatory_setting_names_the_key(tmp_path: Path, command: Command) -> None:
+    from omegaconf.errors import MissingMandatoryValue
+
+    from cy_queue.core.queue import ResourceRequest
+    from cy_queue.entrypoints.hydra.queue_config import compose_snapshots
+
+    with pytest.raises(ValueError, match=r"^Missing mandatory setting ground_truth;") as caught:
+        compose_snapshots([], ResourceRequest(gpus=1), project_root=tmp_path, command=command)
+    assert isinstance(caught.value.__cause__, MissingMandatoryValue)
+    assert "\n" not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["--command", "pipeline", "--gpus", "1", "--"],
+        ["--command", "train", "--gpus", "1", "--"],
+        ["--gpus", "1", "--", "-m", "ultralytics.epochs=1,2"],
+        ["--gpus", "1", "--", "--config-name", "saved"],
+    ],
+)
+def test_cli_reports_missing_mandatory_setting_in_one_line(tmp_path: Path, arguments: list[str]) -> None:
+    saved = tmp_path / "saved"
+    saved.mkdir()
+    (saved / "saved.yaml").write_text("defaults:\n  - pipeline\n  - _self_\n")
+    if "saved" in arguments:
+        arguments = [*arguments, "--config-dir", str(saved)]
+    result = _submit_cli(tmp_path, *arguments)
+    assert result.returncode == 1
+    assert "Traceback" not in result.stderr
+    assert result.stderr.startswith("cy-queue: Missing mandatory setting ground_truth;")
+    assert result.stderr.count("\n") == 1
+    assert not list((tmp_path / "queue").rglob("snapshot.json"))
+
+
+@pytest.mark.parametrize("gpus", ["0", "-1"])
+def test_resource_request_rejects_nonpositive_gpus_before_the_model(gpus: str) -> None:
+    from pydantic import ValidationError
+
+    from cy_queue.entrypoints.queue import _parser, _resource_request
+
+    parsed = _parser().parse_args(["submit", "--gpus", gpus, "--", "ground_truth=input.csv"])
+    with pytest.raises(ValueError, match=r"^--gpus must be a positive integer$") as caught:
+        _resource_request(parsed)
+    assert not isinstance(caught.value, ValidationError)
+
+
+@pytest.mark.parametrize("gpus", ["0", "-1"])
+def test_cli_reports_nonpositive_gpus_in_one_line(tmp_path: Path, gpus: str) -> None:
+    result = _submit_cli(tmp_path, "--gpus", gpus, "--", "ground_truth=input.csv")
+    assert result.returncode == 1
+    assert result.stderr == "cy-queue: --gpus must be a positive integer\n"
+
+
+def test_resource_request_rejects_more_gpus_than_the_host_has(monkeypatch: pytest.MonkeyPatch) -> None:
+    from cy_queue.adapters.runtime.gpu_resources import GPUInventory
+    from cy_queue.core.queue import ResourceRequest
+    from cy_queue.entrypoints.queue import _parser, _resource_request
+
+    monkeypatch.setattr(GPUInventory, "physical_uuids", lambda self: ("GPU-a", "GPU-b"))
+    parsed = _parser().parse_args(["submit", "--gpus", "3", "--", "ground_truth=input.csv"])
+    with pytest.raises(ValueError, match=r"^--gpus 3 exceeds the 2 GPU\(s\) on this host$"):
+        _resource_request(parsed)
+    parsed = _parser().parse_args(["submit", "--gpus", "2", "--", "ground_truth=input.csv"])
+    assert _resource_request(parsed) == ResourceRequest(gpus=2)
+
+
+def test_cli_rejects_more_gpus_than_the_host_has(tmp_path: Path) -> None:
+    result = _submit_cli(tmp_path, "--gpus", "2", "--", "ground_truth=input.csv")
+    assert result.returncode == 1
+    assert result.stderr == "cy-queue: --gpus 2 exceeds the 1 GPU(s) on this host\n"
+    assert not list((tmp_path / "queue").rglob("snapshot.json"))
+
+
+def test_cli_accepts_unchecked_gpus_with_one_warning_without_nvml(tmp_path: Path) -> None:
+    environment = queue_environment(tmp_path) | {"CY_TEST_QUEUE_MEMORY": str(tmp_path / "absent.json")}
+    result = _submit_cli(tmp_path, "--gpus", "4", "--json", "--", "ground_truth=input.csv", environment=environment)
+    assert result.returncode == 0, result.stderr
+    assert [job["state"] for job in json.loads(result.stdout)] == ["pending"]
+    warnings = [line for line in result.stderr.splitlines() if "WARNING" in line]
+    assert len(warnings) == 1
+    assert "--gpus 4 was not checked against the host GPU count" in warnings[0]
 
 
 def test_queue_rejects_auto_gpu_with_migration_guidance_before_composition(tmp_path: Path) -> None:

@@ -64,6 +64,9 @@ owned job; `archive`/`restore` take owned finished jobs.
 
 - `submit`: `pipeline` by default, `--command train` for standalone training; Hydra args
   after `--`. `--gpus N` or `--devices` (exact), never both; at least one whole GPU.
+  `--gpus N` above the host's NVML physical GPU count is rejected at submit; when NVML
+  cannot be read, the job is accepted unchecked with one stderr warning. A missing
+  mandatory CY setting is a one-line `cy-queue:` error naming the key.
   Integer selectors use CUDA-visible logical order and freeze physical identities.
 - `move JOB up|down|top|bottom|before|after [REL] --revision N`: stale revisions rejected.
 - `gpu` selectors are physical NVML indexes (re-resolve after hardware change or reboot)

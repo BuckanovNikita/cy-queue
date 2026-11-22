@@ -31,7 +31,7 @@ cy-queue [--root ROOT] submit [-h] [--command {pipeline,train}] (--gpus GPUS | -
 | Аргумент | По умолчанию | Описание |
 | --- | --- | --- |
 | `--command {pipeline,train}` | `pipeline` | Какую команду CY поставить: `pipeline` — пайплайн, как у `cy`; `train` — обучение, как у `cy-train`. От этого зависит и имя конфигурации Hydra по умолчанию (`pipeline` или `train`). |
-| `--gpus GPUS` | — | Сколько целых GPU нужно заданию; целое число больше нуля. Worker выберет любые свободные GPU. |
+| `--gpus GPUS` | — | Сколько целых GPU нужно заданию; целое число больше нуля и не больше числа GPU на хосте. Worker выберет любые свободные GPU. |
 | `--devices DEVICES` | — | Точные GPU по порядку: индексы CUDA через запятую, например `0,2`. Нужен ровно один из `--gpus` и `--devices`. |
 | `--label LABEL` | имя задачи ClearML из конфигурации | [Имя задания (label)](../../GLOSSARY.md#label), которое печатают `submit` и `list`. Пустое или из одних пробелов не принимается. |
 | `--json` | выключен | Печатать записи заданий в JSON вместо строк `Submitted ...`. |
@@ -65,7 +65,7 @@ cy-queue: error: unrecognized arguments: -m
 1. Команда читает конфигурацию очереди (см. [конфигурацию](../configuration.md)).
 2. Рабочий каталог — это `CY_HOME`, а если переменная не задана, текущий каталог.
 3. Запрос GPU (GPU request) (см. [запрос GPU](../../GLOSSARY.md#gpu-request)):
-   - `--gpus N` записывается как число;
+   - `--gpus N` записывается как число. При постановке `N` сравнивается с числом GPU на хосте, которое сообщает NVML; `CUDA_VISIBLE_DEVICES` на это число не влияет. Если `N` больше, задание не ставится. Если NVML не отвечает, задание ставится без этой проверки, а на stderr печатается одно предупреждение `--gpus N was not checked against the host GPU count, which is unavailable: ...`;
    - `--devices` переводит индексы в UUID GPU сразу при постановке. Индекс считается по GPU, видимым в текущем окружении (`CUDA_VISIBLE_DEVICES` и порядок CUDA): `0` — первая видимая GPU. В задание попадают UUID, поэтому позднее изменение `CUDA_VISIBLE_DEVICES` его не меняет.
 4. Hydra собирает конфигурацию CY: имя из `--config-name` (по умолчанию `pipeline` или `train`), каталог из `--config-dir` и override. Конфигурации CY описаны в [репозитории CY](https://github.com/BuckanovNikita/clearml-yolo).
 5. Если указан `-m`/`--multirun` или в переопределениях либо в сохранённой конфигурации стоит `hydra.mode=MULTIRUN`, Hydra разворачивает sweep: одно задание на каждую комбинацию значений. Все задания sweep получают один и тот же запрос GPU, свой каталог вывода Hydra и один общий новый тег ClearML, который добавляется к `clearml.tags` (заданные вами теги сохраняются). Каждая постановка sweep создаёт новый тег; задание, поставленное не как sweep, тега не получает. Значения через запятую без `-m` и без `hydra.mode=MULTIRUN` не разворачиваются: команда завершается с ошибкой `Use -m or hydra.mode=MULTIRUN to expand a Hydra sweep`.
@@ -73,7 +73,7 @@ cy-queue: error: unrecognized arguments: -m
 7. Для каждой конфигурации замораживается снимок: полная конфигурация, команда, имя задания, [рабочий каталог (project)](../../GLOSSARY.md#project), [текущий каталог (working directory)](../../GLOSSARY.md#working-directory), путь к интерпретатору Python, версия CY и [отпечаток окружения (package identity)](../../GLOSSARY.md#package-identity): версия Python, имена и версии всех установленных пакетов и файлы установленного кода CY и cy-queue. Позднее изменение файлов конфигурации на задание не влияет.
 8. Задания записываются в [раздел хоста (host partition)](../../GLOSSARY.md#host-partition) каталога очереди в состоянии `pending`, в конец очереди. Задание получает следующий номер в разделе хоста: на единицу больше самого большого номера в нём. Номер не меняется при `move`, архиве и перезапуске worker и не достаётся другому заданию.
 
-Что проверяется позже, когда worker запускает задание: версия CY и отпечаток окружения не изменились, интерпретатор тот же, рабочий и текущий каталоги существуют. Проверку выполняет сам процесс задания, когда задание уже `running` и занимает свои GPU. При расхождении процесс сразу завершается, и задание становится `failed` с ошибкой `Native process exited with status 1`. Причина записана в журнале задания: `Queued package version changed; resubmit with the current installation`, `Queued package identity changed; resubmit with the current installation`, `Queued interpreter changed; run the worker in the submitting environment` или `Queued project or working directory is no longer available`. Такое задание нужно поставить заново. Поэтому после установки или обновления любого пакета в окружении поставьте ожидающие задания заново. Число GPU в `--gpus` при постановке с числом GPU на хосте не сравнивается.
+Что проверяется позже, когда worker запускает задание: версия CY и отпечаток окружения не изменились, интерпретатор тот же, рабочий и текущий каталоги существуют. Проверку выполняет сам процесс задания, когда задание уже `running` и занимает свои GPU. При расхождении процесс сразу завершается, и задание становится `failed` с ошибкой `Native process exited with status 1`. Причина записана в журнале задания: `Queued package version changed; resubmit with the current installation`, `Queued package identity changed; resubmit with the current installation`, `Queued interpreter changed; run the worker in the submitting environment` или `Queued project or working directory is no longer available`. Такое задание нужно поставить заново. Поэтому после установки или обновления любого пакета в окружении поставьте ожидающие задания заново.
 
 При запуске очередь сама задаёт устройства всех фаз CY по выделенным GPU (allocation); фазы, где явно указан `cpu`, остаются на CPU.
 
@@ -102,7 +102,7 @@ Submitted Job 17 · my-run
 | Код | Когда |
 | --- | --- |
 | `0` | Задания записаны. |
-| `1` | Ошибка конфигурации очереди, запроса GPU, конфигурации CY или записи; обычно сообщение начинается с `cy-queue:`. Некоторые ошибки конфигурации CY (например, не заданный обязательный ключ) печатаются трассировкой Python, код тоже `1`. |
+| `1` | Ошибка конфигурации очереди, запроса GPU, конфигурации CY или записи; обычно сообщение начинается с `cy-queue:`. |
 | `2` | Ошибка аргументов: нет `--gpus`/`--devices`, оба сразу, неизвестный флаг. |
 
 ## Частые ошибки
@@ -117,7 +117,9 @@ Submitted Job 17 · my-run
 
 `Use -m or hydra.mode=MULTIRUN to expand a Hydra sweep` — в переопределении несколько значений через запятую, а sweep не запрошен. Добавьте `-m` после `--`.
 
-`Input should be greater than 0` (после `1 validation error for ResourceRequest`) — `--gpus 0` или отрицательное число.
+`--gpus must be a positive integer` — `--gpus 0` или отрицательное число.
+
+`--gpus N exceeds the M GPU(s) on this host` — `--gpus` просит больше GPU, чем есть на хосте: такое задание никогда бы не запустилось. Уменьшите `N` до `M` или меньше.
 
 `Job label must be nonempty` — пустой `--label`.
 
@@ -133,7 +135,7 @@ Submitted Job 17 · my-run
 
 `Cannot find primary config '...'` — нет конфигурации с именем из `--config-name`. Проверьте `--config-dir` и `--config-name`.
 
-`omegaconf.errors.MissingMandatoryValue: Missing mandatory value: ground_truth` с трассировкой Python — не задан обязательный ключ CY. Добавьте его override, например `ground_truth=data/ground_truth.csv`.
+`Missing mandatory setting ground_truth; add the override ground_truth=<value>` — не задан обязательный ключ CY; в сообщении стоит его имя. Добавьте его override, например `ground_truth=data/ground_truth.csv`.
 
 Сообщения о конфигурации очереди описаны в [конфигурации](../configuration.md).
 
