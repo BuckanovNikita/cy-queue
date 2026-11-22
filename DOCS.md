@@ -115,9 +115,9 @@ owned job; `archive`/`restore` take owned finished jobs.
 - Cancel: verified owner gets up to 90 s to shut down and publish diagnostics, keeping its
   allocation; then verified whole-tree cleanup. Preserve logs and uncertain evidence.
   A job cancelled after launch records error `Job was cancelled`, never its exit status;
-  a guardian failure keeps `Guardian operation failed: <type>`. A cancel before exec,
-  including one the guardian's launch check catches after spawning the gated child,
-  records no error. Known gap: a cancel that lands after that check but before the guardian
+  a guardian failure keeps `Guardian operation failed: <type>`. A cancel before native
+  execution (while pending, during preparation, at a deferred start, or at the guardian's
+  launch check after it spawned the gated child) records no error. Known gap: a cancel that lands after that check but before the guardian
   moves the job from `starting` to `running` fails that state transaction and records
   `Guardian operation failed: RuntimeError`.
 - Guardian death or uncertain cleanup → `recovery_required`. Recovery needs conservative
@@ -154,8 +154,8 @@ owned job; `archive`/`restore` take owned finished jobs.
   never private snapshots. Inspection never evaluates saved model config, recovers jobs
   or releases reservations.
 - Public record values follow the state: only a pending job has a wait reason (a stale one
-  in an older record reads as none); every state write, including cancel and recover, sets
-  `updated_at`; a repeated cancel of a cancelling job, wait reason and progress writes do
+  in an older record reads as none); every state write, including cancel, recover and the
+  device update after a pipeline GPU handoff (state stays `running`), sets `updated_at`; a repeated cancel of a cancelling job, wait reason and progress writes do
   not (the worker's startup window counts from `updated_at`). `list`, `move`, `archive` and
   `restore` show local pending jobs with computed wait reasons and active jobs with their
   reserved devices; `list --host` and jobs with a refresh warning show recorded values.
