@@ -99,7 +99,12 @@ def test_snapshot_interpreter_mismatch_names_the_running_executable(tmp_path: Pa
     with pytest.raises(ValueError, match="Queued interpreter changed") as mismatch:
         validate_snapshot(snapshot.model_copy(update={"interpreter": str(tmp_path / "other-python")}))
     assert "worker" not in str(mismatch.value)
-    assert "different Python executable" in str(mismatch.value)
+    # The step must exist: submit records the interpreter that runs it and has no interpreter option.
+    assert str(mismatch.value) == (
+        "Queued interpreter changed; the recorded interpreter started a different Python executable "
+        "(a launcher or an alias); resubmit by running cy-queue submit with the real Python interpreter, "
+        "not through a launcher or an alias"
+    )
 
 
 def test_root_option_help_uses_the_queue_root_term() -> None:

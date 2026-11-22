@@ -85,7 +85,8 @@ def validate_snapshot(snapshot: JobSnapshot) -> None:
     if Path(snapshot.interpreter).absolute() != Path(sys.executable).absolute():
         raise ValueError(
             "Queued interpreter changed; the recorded interpreter started a different Python executable "
-            "(a launcher or an alias); resubmit with the real interpreter path"
+            "(a launcher or an alias); resubmit by running cy-queue submit with the real Python interpreter, "
+            "not through a launcher or an alias"
         )
     if not Path(snapshot.project_root).is_dir() or not Path(snapshot.cwd).is_dir():
         raise ValueError("Queued project or working directory is no longer available")
