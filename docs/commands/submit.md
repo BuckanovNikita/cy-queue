@@ -65,7 +65,7 @@ cy-queue: error: unrecognized arguments: -m
 1. Команда читает конфигурацию очереди (см. [конфигурацию](../configuration.md)).
 2. Рабочий каталог — это `CY_HOME`, а если переменная не задана, текущий каталог.
 3. Запрос GPU (GPU request) (см. [запрос GPU](../../GLOSSARY.md#gpu-request)):
-   - `--gpus N` записывается как число. При постановке `N` сравнивается с числом GPU на хосте, которое сообщает NVML; `CUDA_VISIBLE_DEVICES` на это число не влияет. Если `N` больше, задание не ставится. Если NVML не отвечает, задание ставится без этой проверки, а на stderr печатается одно предупреждение `--gpus N was not checked against the host GPU count, which is unavailable: ...`;
+   - `--gpus N` записывается как число. При постановке `N` сравнивается с числом GPU на хосте, которое сообщает NVML; `CUDA_VISIBLE_DEVICES` на это число не влияет. Если `N` больше, задание не ставится. Если NVML не отвечает, задание ставится без этой проверки, а на stderr печатается одна строка журнала уровня `WARNING`: `<время> | WARNING  | cy_queue.entrypoints.queue:_gpu_count_request:<строка> - --gpus N was not checked against the host GPU count, which is unavailable: <причина>`;
    - `--devices` переводит индексы в UUID GPU сразу при постановке. Индекс считается по GPU, видимым в текущем окружении (`CUDA_VISIBLE_DEVICES` и порядок CUDA): `0` — первая видимая GPU. В задание попадают UUID, поэтому позднее изменение `CUDA_VISIBLE_DEVICES` его не меняет.
 4. Hydra собирает конфигурацию CY: имя из `--config-name` (по умолчанию `pipeline` или `train`), каталог из `--config-dir` и override. Конфигурации CY описаны в [репозитории CY](https://github.com/BuckanovNikita/clearml-yolo).
 5. Если указан `-m`/`--multirun` или в переопределениях либо в сохранённой конфигурации стоит `hydra.mode=MULTIRUN`, Hydra разворачивает sweep: одно задание на каждую комбинацию значений. Все задания sweep получают один и тот же запрос GPU, свой каталог вывода Hydra и один общий новый тег ClearML, который добавляется к `clearml.tags` (заданные вами теги сохраняются). Каждая постановка sweep создаёт новый тег; задание, поставленное не как sweep, тега не получает. Значения через запятую без `-m` и без `hydra.mode=MULTIRUN` не разворачиваются: команда завершается с ошибкой `Use -m or hydra.mode=MULTIRUN to expand a Hydra sweep`.
@@ -102,7 +102,7 @@ Submitted Job 17 · my-run
 | Код | Когда |
 | --- | --- |
 | `0` | Задания записаны. |
-| `1` | Ошибка конфигурации очереди, запроса GPU, конфигурации CY или записи; обычно сообщение начинается с `cy-queue:`. |
+| `1` | Ошибка конфигурации очереди, запроса GPU, конфигурации CY или записи; обычно сообщение начинается с `cy-queue:`. Ошибка составления конфигурации CY из Hydra, например override несуществующего ключа (`ultralytics.epoch=1` вместо `ultralytics.epochs=1`), печатается трассировкой Python с последней строкой `hydra.errors.ConfigCompositionException: Could not override '...'`, код тоже `1`. |
 | `2` | Ошибка аргументов: нет `--gpus`/`--devices`, оба сразу, неизвестный флаг. |
 
 ## Частые ошибки
