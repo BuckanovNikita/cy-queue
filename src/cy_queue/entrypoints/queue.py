@@ -221,12 +221,15 @@ class _WorkerLog:
         for job in jobs:
             status = (job.state, job.devices, job.waiting_reason, job.progress, job.error)
             current[job.id] = status
-            if self._jobs.get(job.id) == status:
+            previous = self._jobs.get(job.id)
+            if previous == status:
                 continue
             # Existing completed history is counted, without replaying every old job.
             if initial and job.state in {"completed", "failed", "cancelled"}:
                 continue
-            level = "ERROR" if job.state in {"failed", "recovery_required"} else "INFO"
+            # Progress from leftover processes of a failed job is evidence, not a new failure.
+            alarming = previous is None or previous[0] != job.state or previous[4] != job.error
+            level = "ERROR" if job.state in {"failed", "recovery_required"} and alarming else "INFO"
             details = (
                 f"{self.presentation.job_title(job)} | state={job.state} | "
                 f"request={self.presentation.request(job.request, job.host_id)} | "
@@ -320,9 +323,10 @@ def _execute(arguments: argparse.Namespace) -> None:
         if arguments.json:
             sys.stdout.write(json.dumps(values) + "\n")
         else:
-            presentation = QueuePresentation()
+            # The user's own paths print as is so they can be copied; only the name is free text.
+            values["name"] = QueuePresentation().text(settings.name)
             for key, value in values.items():
-                sys.stdout.write(f"{key.replace('_', ' ')}: {presentation.text(str(value))}\n")
+                sys.stdout.write(f"{key.replace('_', ' ')}: {value}\n")
         return
 
     from cy_queue.adapters.queue.coordination import bind_coordination_root
@@ -403,8 +407,7 @@ def _queue_operation(
                 presentation=presentation,
             )
         case "cancel":
-            job = service.cancel(arguments.job_id)
-            _show_job(job, presentation, as_json=arguments.json)
+            _cancel(service, arguments, presentation)
         case "recover":
             job = service.recover(arguments.job_id)
             _show_job(job, presentation, as_json=arguments.json)
@@ -454,6 +457,18 @@ def _visibility(value: str) -> QueueVisibility:
             return value
         case _:
             raise ValueError("Unknown queue view")
+
+
+def _cancel(service: QueueService, arguments: argparse.Namespace, presentation: QueuePresentation) -> None:
+    job = service.cancel(arguments.job_id)
+    _show_job(job, presentation, as_json=arguments.json)
+    # Cancel only asks a leftover guardian to stop; the owner still has to run recover.
+    if job.state == "recovery_required" and not arguments.json:
+        reference = presentation.reference(job)
+        sys.stderr.write(
+            f"cy-queue: {reference} stays recovery_required; "
+            f"run cy-queue recover {reference} to stop what is left of it\n"
+        )
 
 
 def _show_job(job: PublicJob, presentation: QueuePresentation, *, as_json: bool) -> None:

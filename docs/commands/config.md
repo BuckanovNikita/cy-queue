@@ -64,7 +64,7 @@ max used memory gib: 2.0
 | `root source` | Откуда взят `root`: `config` — из файла, `--root` — из флага. |
 | `max used memory gib` | [Порог занятой памяти (memory admission threshold)](../../GLOSSARY.md#memory-admission-threshold), ключ `max_used_memory_gib`. |
 
-Пути печатаются в абсолютном виде. В текстовом выводе части, похожие на UUID, заменяются на `[reference]`; в `--json` пути печатаются как есть.
+Пути печатаются в абсолютном виде и как есть, и в тексте, и в `--json`: их можно скопировать. В текстовом выводе только `name` проходит через замены текстовых полей (см. [формат JSON](../formats/json.md)); например, 64-символьный шестнадцатеричный токен в имени печатается как `<redacted>`. Сообщения об ошибках (`cy-queue: ...`) проходят через эти замены, как и у других подкоманд.
 
 С `--json` команда печатает объект с ключами `name`, `root`, `coordination_root`, `config_path`, `root_source` и `max_used_memory_gib` (см. [формат JSON](../formats/json.md)).
 

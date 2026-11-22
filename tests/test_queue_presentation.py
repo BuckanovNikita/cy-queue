@@ -86,6 +86,16 @@ def test_missing_and_remote_gpu_labels_are_stable_and_distinct() -> None:
     assert remote_devices[0] == missing
 
 
+@pytest.mark.parametrize("host_id", ["remote", "nosuchhost", "a" * 64])
+def test_header_names_only_the_local_host(host_id: str) -> None:
+    from cy_queue.entrypoints.queue_presentation import QueuePresentation
+
+    presentation = QueuePresentation(host_id="local", host_name="gpu-host")
+    assert presentation.host("local") == "gpu-host"
+    assert presentation.host(host_id) == "Remote host"
+    assert QueuePresentation().host(host_id) == "Remote host"
+
+
 def _card() -> GPUControlStatus:
     claim = GuardianClaim(
         job_id="job",

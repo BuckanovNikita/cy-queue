@@ -41,10 +41,10 @@ class QueuePresentation:
         self.queue_name = human_text(queue_name)
 
     def host(self, host_id: str) -> str:
+        # Another host is never echoed: a real ID is a masked hash and a typed one may be a typo.
         if self._host_id is not None and host_id == self._host_id:
             return self.host_name
-        rendered = self.text(host_id)
-        return rendered if rendered == host_id else "Remote host"
+        return "Remote host"
 
     @staticmethod
     def reference(job: PublicJob) -> str:
