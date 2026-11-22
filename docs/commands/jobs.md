@@ -21,7 +21,7 @@ cy-queue restore job-17                   # вернуть задание из �
 - [ссылка на задание (job reference)](../../GLOSSARY.md#job-reference) `job-<N>`, где `<N>` — номер, который `submit` и `list` печатают как `Job <N>`;
 - полный ID задания из поля `id` вывода `--json`.
 
-Другие формы (`17`, `Job 17`, `job-017`) не принимаются. Задание ищется только в [разделе хоста (host partition)](../../GLOSSARY.md#host-partition) текущего хоста, архивные задания тоже находятся. Если задания нет, команда печатает `Queue job is missing from the local host partition; use job-N from list`.
+Другие формы (`17`, `Job 17`, `job-017`) не принимаются. Задание ищется только в [разделе хоста (host partition)](../../GLOSSARY.md#host-partition) текущего хоста, архивные задания тоже находятся. Если задания нет, команда печатает `Queue job reference is unknown in the local host partition; use job-N from list`. Сообщение не различает опечатку и задание другого хоста: ссылка неизвестна в разделе хоста текущего хоста.
 
 [Владелец](../../GLOSSARY.md#owner) задания — пользователь Linux (UID), который его поставил в очередь. Кто что может:
 
@@ -49,7 +49,7 @@ cy-queue move [-h] --revision REVISION [--json] JOB {up,down,top,bottom,before,a
 | --- | --- | --- |
 | `JOB` | обязателен | Задание, которое нужно перенести. |
 | `direction` | обязателен | Направление: `up`, `down`, `top`, `bottom`, `before`, `after`. |
-| `relative_job_id` | нет | Задание, относительно которого переносят. Обязателен для `before` и `after`. Для остальных направлений место не меняет, но если он указан, задание должно существовать, иначе команда отказывает с `Queue job is missing from the local host partition; use job-N from list`. |
+| `relative_job_id` | нет | Задание, относительно которого переносят. Обязателен для `before` и `after`. Для остальных направлений место не меняет, но если он указан, задание должно существовать, иначе команда отказывает с `Queue job reference is unknown in the local host partition; use job-N from list`. |
 | `--revision` | обязателен | [Ревизия очереди (revision)](../../GLOSSARY.md#revision), которую вы видели в последний раз. |
 | `--json` | выключен | Напечатать очередь после переноса в JSON. |
 
@@ -146,7 +146,7 @@ Job 17 · my-run: cancelled
 | Сообщение | Причина и что делать |
 | --- | --- |
 | `Only the effective job owner may change or execute this job` | Задание поставил другой пользователь. Отменить его может только владелец. |
-| `Queue job is missing from the local host partition; use job-N from list` | Неверная ссылка или задание другого хоста. Возьмите `job-<N>` из `cy-queue list`. |
+| `Queue job reference is unknown in the local host partition; use job-N from list` | Ссылка неизвестна в разделе текущего хоста: опечатка или задание другого хоста. Возьмите `job-<N>` из `cy-queue list`. |
 
 ## recover
 
@@ -197,7 +197,7 @@ Job 17 · my-run: cancelled
 | `Guardian is still alive; cancel it before attempting recovery` | Guardian задания ещё работает. Выполните `cancel` и дождитесь, пока он завершится. |
 | `GPU guardian still owns its locks; recovery refused` | Резерв GPU задания всё ещё у работающего процесса. Повторите позже. |
 | `Cannot verify model process cleanup: /proc access denied for PIDs [...]; GPU lease remains owned` | Команда не смогла прочитать в `/proc` перечисленные процессы вашего пользователя, поэтому не может подтвердить, что процессов задания не осталось. Так бывает, когда `cy-queue` запущен в контейнере или пространстве имён, откуда другие ваши процессы не читаются. Задание остаётся в `recovery_required`. Выполните `recover` из обычного сеанса на хосте. |
-| `Queue job is missing from the local host partition; use job-N from list` | Неверная ссылка или задание другого хоста. Возьмите `job-<N>` из `cy-queue list`. |
+| `Queue job reference is unknown in the local host partition; use job-N from list` | Ссылка неизвестна в разделе текущего хоста: опечатка или задание другого хоста. Возьмите `job-<N>` из `cy-queue list`. |
 
 ## archive
 
@@ -284,7 +284,7 @@ cy-queue restore [-h] [--json] JOB [JOB ...]
 | Сообщение | Причина и что делать |
 | --- | --- |
 | `Only the effective job owner may change or execute this job` | Одно из заданий чужое. Команда ничего не возвращает из архива. |
-| `Queue job is missing from the local host partition; use job-N from list` | Неверная ссылка. Возьмите `job-<N>` из `cy-queue list --archived`. |
+| `Queue job reference is unknown in the local host partition; use job-N from list` | Ссылка неизвестна в разделе текущего хоста. Возьмите `job-<N>` из `cy-queue list --archived`. |
 
 ## См. также
 

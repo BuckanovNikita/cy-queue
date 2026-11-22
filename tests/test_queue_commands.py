@@ -91,6 +91,30 @@ def test_snapshot_rejects_execution_after_package_identity_change(tmp_path: Path
         validate_snapshot(snapshot.model_copy(update={"package_identity": "old-code"}))
 
 
+def test_snapshot_interpreter_mismatch_names_the_running_executable(tmp_path: Path) -> None:
+    from cy_queue.core.queue import ResourceRequest
+    from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, validate_snapshot
+
+    snapshot = compose_snapshots(["ground_truth=input.csv"], ResourceRequest(gpus=1), project_root=tmp_path)[0]
+    with pytest.raises(ValueError, match="Queued interpreter changed") as mismatch:
+        validate_snapshot(snapshot.model_copy(update={"interpreter": str(tmp_path / "other-python")}))
+    assert "worker" not in str(mismatch.value)
+    # The step must exist: submit records the interpreter that runs it and has no interpreter option.
+    assert str(mismatch.value) == (
+        "Queued interpreter changed; the recorded interpreter started a different Python executable "
+        "(a launcher or an alias); resubmit by running cy-queue submit with the real Python interpreter, "
+        "not through a launcher or an alias"
+    )
+
+
+def test_root_option_help_uses_the_queue_root_term() -> None:
+    from cy_queue.entrypoints.queue import _parser
+
+    help_text = " ".join(_parser().format_help().split())
+    assert "Override the configured queue root" in help_text
+    assert "shared metadata" not in help_text
+
+
 @pytest.mark.parametrize(
     "override",
     [

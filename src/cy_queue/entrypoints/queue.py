@@ -35,7 +35,7 @@ class _QueueParser(argparse.ArgumentParser):
 
 def _parser() -> argparse.ArgumentParser:
     parser = _QueueParser(prog="cy-queue", description=__doc__)
-    parser.add_argument("--root", type=Path, help="Override the configured shared metadata root")
+    parser.add_argument("--root", type=Path, help="Override the configured queue root")
     commands = parser.add_subparsers(dest="action", required=True)
     config = commands.add_parser("config", help="Inspect user queue.toml or CY_QUEUE_CONFIG without starting a queue")
     config.add_argument("--json", action="store_true")
@@ -259,22 +259,33 @@ class _WorkerLog:
         )
 
 
-def _worker(service: QueueService, presentation: QueuePresentation | None = None) -> None:
+def _worker(
+    service: QueueService,
+    presentation: QueuePresentation | None = None,
+    *,
+    start_message: str | None = None,
+) -> None:
+    """Run the worker loop; log ``start_message`` once the worker registration is accepted."""
     stopped = False
 
     def stop(_signum: int, _frame: FrameType | None) -> None:
         nonlocal stopped
         stopped = True
 
+    log = _WorkerLog(service.identity.owner_uid, presentation or _presentation(service.identity.host_id))
+    pending_start = start_message
+
+    def observe(view: QueueView) -> None:
+        # The first observation happens only inside an accepted worker registration.
+        nonlocal pending_start
+        if pending_start is not None:
+            logger.info("{}", QueuePresentation().text(pending_start))
+            pending_start = None
+        log(view)
+
     previous = {sig: signal.signal(sig, stop) for sig in (signal.SIGINT, signal.SIGTERM)}
     try:
-        service.worker(
-            lambda: stopped,
-            observe=_WorkerLog(
-                service.identity.owner_uid,
-                presentation or _presentation(service.identity.host_id),
-            ),
-        )
+        service.worker(lambda: stopped, observe=observe)
     finally:
         for sig, handler in previous.items():
             signal.signal(sig, handler)
@@ -346,20 +357,19 @@ def _execute(arguments: argparse.Namespace) -> None:
         identity,
         controls=GPUControls(processes.pool),
     )
+    start_message: str | None = None
     if arguments.action == "worker":
-        logger.info(
-            "{}",
-            QueuePresentation().text(
-                f"Starting queue worker | queue={settings.name} root={storage.root} "
-                f"host={socket.gethostname()} "
-                f"uid={identity.owner_uid} max_used_memory_gib={settings.max_used_memory_gib}"
-            ),
+        start_message = (
+            f"Starting queue worker | queue={settings.name} root={storage.root} "
+            f"host={socket.gethostname()} "
+            f"uid={identity.owner_uid} max_used_memory_gib={settings.max_used_memory_gib}"
         )
     _queue_operation(
         service,
         arguments,
         root,
         presentation=_presentation(identity.host_id, queue_name=settings.name),
+        worker_start_message=start_message,
     )
 
 
@@ -369,6 +379,7 @@ def _queue_operation(
     root: Path,
     *,
     presentation: QueuePresentation | None = None,
+    worker_start_message: str | None = None,
 ) -> None:
     presentation = presentation or _presentation(service.identity.host_id)
     match arguments.action:
@@ -406,7 +417,7 @@ def _queue_operation(
                 sys.stdout.write(f"{verb} {len(targets)} job(s)\n")
             _show(view, as_json=arguments.json, presentation=presentation)
         case "worker":
-            _worker(service, presentation)
+            _worker(service, presentation, start_message=worker_start_message)
         case "tui":
             _tui(service, presentation)
         case _:

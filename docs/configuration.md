@@ -51,7 +51,7 @@ max_used_memory_gib = 2.0
 - Если путь уже существует, это должен быть каталог. Несуществующий каталог создаётся при первом обращении к очереди (не командой `config`).
 - Файловая система `coordination_root` проверяется при каждом запуске, включая `config`.
 
-Ключи читаются при каждом запуске `cy-queue`. Запущенный worker работает с теми значениями, которые прочитал при старте; после правки файла перезапустите его. Значение, которое применил worker, печатается в строке `Starting queue worker` его журнала; `cy-queue config` показывает значение из файла.
+Ключи читаются при каждом запуске `cy-queue`. Запущенный worker работает с теми значениями, которые прочитал при старте; после правки файла перезапустите его. Значение, которое применил worker, печатается в строке `Starting queue worker` его журнала (после того, как worker принят); `cy-queue config` показывает значение из файла.
 
 ## Флаг `--root`
 
@@ -122,7 +122,7 @@ cy-queue: CY_QUEUE_ROOT conflicts with the selected queue root; remove the legac
 | `Cannot determine the queue coordination filesystem` | Строка в `/proc/self/mountinfo` имеет неожиданный формат, и файловую систему `coordination_root` определить не удалось. Если `/proc` не смонтирован или недоступен, сообщение другое: ошибка чтения `/proc/self/mountinfo`. | Проверьте содержимое `/proc/self/mountinfo` и что `/proc` смонтирован и доступен процессу. |
 | `Queue coordination_root requires a supported host-local Linux filesystem or NFS with hard,local_lock=flock and shared cache` | `coordination_root` лежит на неподдерживаемой файловой системе. | Выберите каталог по [требованиям](setup.md#каталог-координации). |
 | `NFS coordination requires effective hard and local_lock=flock or local_lock=all with shared cache (no soft, softerr or nosharecache); check the mount options with your administrator` | `coordination_root` на NFS с неподходящими параметрами монтирования. | См. [требования к NFS](setup.md#каталог-координации). |
-| `Host coordination is already bound to another location; stop workers and use the documented maintenance procedure` | На этом хосте уже используется другой `coordination_root`. Проверка выполняется любой подкомандой, кроме `config`. | Укажите тот же `coordination_root`, что у остальных пользователей хоста, см. [setup.md](setup.md#привязка-хоста-к-каталогу-координации). |
+| `Host coordination is already bound to <bound>, not <selected>; set coordination_root to the bound location` | На этом хосте уже используется другой `coordination_root`; в сообщении назван привязанный каталог (`<bound>`) и выбранный (`<selected>`). Проверка выполняется любой подкомандой, кроме `config`. | Укажите в `coordination_root` привязанный каталог, тот же, что у остальных пользователей хоста, см. [setup.md](setup.md#привязка-хоста-к-каталогу-координации). |
 
 ## См. также
 

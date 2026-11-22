@@ -94,10 +94,11 @@ def bind_coordination_root(host_id: str, root: Path, *, bootstrap_root: Path | N
         directory = host_directory(host_id, bootstrap)
         path = directory / "coordination-root.json"
         if path.exists() or path.is_symlink():
-            if _read_binding(path, host_id) != selected:
+            bound = _read_binding(path, host_id)
+            if bound != selected:
                 raise RuntimeError(
-                    "Host coordination is already bound to another location; "
-                    "stop workers and use the documented maintenance procedure"
+                    f"Host coordination is already bound to {bound}, not {selected}; "
+                    "set coordination_root to the bound location"
                 )
             host_directory(host_id, selected)
             return

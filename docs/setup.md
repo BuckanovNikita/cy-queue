@@ -94,10 +94,10 @@ cy-queue: NFS coordination requires effective hard and local_lock=flock or local
 Вызов с другим `coordination_root` завершается ошибкой, у любого пользователя:
 
 ```text
-cy-queue: Host coordination is already bound to another location; stop workers and use the documented maintenance procedure
+cy-queue: Host coordination is already bound to <bound>, not <selected>; set coordination_root to the bound location
 ```
 
-Исправьте `coordination_root` в `queue.toml` на тот, к которому привязан хост; его путь записан в поле `root` этого файла:
+Сообщение называет привязанный каталог (`<bound>`) и выбранный (`<selected>`). Исправьте `coordination_root` в `queue.toml` на привязанный каталог; тот же путь записан в поле `root` файла привязки:
 
 ```bash
 cat /tmp/clearml-yolo-queue/*/coordination-root.json
@@ -174,7 +174,7 @@ Worker выполняет только задания своего пользо�
 | --- | --- |
 | `Queued package version changed; resubmit with the current installation` | версия CY |
 | `Queued package identity changed; resubmit with the current installation` | любой установленный пакет, версия Python или файлы CY и `cy-queue` (в том числе правки в editable-установке) |
-| `Queued interpreter changed; run the worker in the submitting environment` | процесс задания запущен не тем интерпретатором, который записан при `submit` |
+| `Queued interpreter changed; the recorded interpreter started a different Python executable (a launcher or an alias); resubmit by running cy-queue submit with the real Python interpreter, not through a launcher or an alias` | процесс задания запущен, но его `sys.executable` не совпадает с путём интерпретатора, записанным при `submit`: этот путь оказался оболочкой (launcher) или псевдонимом другого Python. Worker всегда запускает задание интерпретатором из снимка, поэтому окружение worker причиной не служит. Записывается интерпретатор, который запустил `cy-queue submit`; отдельного параметра для него нет. Поставьте задание заново: запустите `cy-queue submit` реальным интерпретатором Python, а не через оболочку (launcher) или псевдоним |
 | `Queued project or working directory is no longer available` | [рабочий каталог (project)](../GLOSSARY.md#project) или [текущий каталог (working directory)](../GLOSSARY.md#working-directory) `submit` удалён |
 
 Поэтому после обновления CY, `cy-queue` или любого пакета окружения ожидающие задания, поставленные до обновления, не выполнятся. Отмените их (`cy-queue cancel job-17`) и поставьте в очередь заново из обновлённого окружения.

@@ -52,7 +52,8 @@ No ADR or decision ids exist; code cites none. Binding decisions:
   privileged services.
 - All participants on one host share machine identity, PID/mount namespaces and the same
   coordination binding; distinct hosts are distinct scheduling partitions. Conflicting
-  coordination roots fail before allocation. A reboot starts a new process-identity epoch.
+  coordination roots fail before allocation; the error names the bound and the selected
+  location (the binding file is world-readable). A reboot starts a new process-identity epoch.
 - Public summaries and ordering events are actor-owned; executable snapshots and logs stay
   private to the owner. New shared roots get sticky permissions; existing modes untouched.
 
@@ -100,7 +101,8 @@ owned job; `archive`/`restore` take owned finished jobs.
 - The worker freezes the threshold at startup, injects it into `QueueGPUInventory` and
   `QueueProcesses`, and each `GuardianPayload` carries it for the final fresh check before
   the exec gate. Config edits affect only the next worker start. Reported in
-  `config --json` (number), text `max used memory gib`, and the worker startup log.
+  `config --json` (number), text `max used memory gib`, and the worker startup log, which is
+  written only after the worker registration is accepted.
 
 ## Execution, handoff and recovery
 
