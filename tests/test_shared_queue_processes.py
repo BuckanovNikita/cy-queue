@@ -556,9 +556,11 @@ def test_owner_can_recover_startup_failure_before_guardian_claim(tmp_path: Path)
         start_gate=str(tmp_path / "closed-gate"),
     )
     assert store.prepare_start(job.id, ("GPU-test",), payload.model_dump_json())
-    store.update(job.id, "recovery_required")
+    marked = store.update(job.id, "recovery_required")
     processes = QueueProcesses(store, identity, local_root=tmp_path / "local")
-    assert processes.recover(job.id).state == "cancelled"
+    recovered = processes.recover(job.id)
+    assert recovered.state == "cancelled"
+    assert recovered.updated_at > marked.updated_at
     assert processes.reserved() == set()
 
 

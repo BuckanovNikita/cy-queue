@@ -179,6 +179,7 @@ publisher.wait(timeout=5)
         assert _wait_for(tmp_path / "publication.done") == "published"
         assert not (tmp_path / "publisher.premature").exists()
         _wait_cancelled(store, processes)
+        assert store.view().jobs[0].error == "Job was cancelled"
         assert process_birth(publisher_pid) is None
         assert process_birth(late_pid) is None
         assert processes.reserved() == set()

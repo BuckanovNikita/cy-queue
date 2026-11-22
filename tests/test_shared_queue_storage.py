@@ -146,3 +146,97 @@ def test_pending_move_crosses_completed_history_using_pending_neighbors(tmp_path
     assert [job.label for job in moved.jobs if job.state == "pending"] == ["last", "first"]
     store.update(jobs[0].id, "completed")
     assert [job.label for job in store.view().jobs] == ["last", "first", "finished"]
+
+
+def _raw(store: NFSQueueStore, identifier: str) -> dict[str, object]:
+    record: dict[str, object] = json.loads(store.public_path(identifier).read_text(encoding="utf-8"))
+    return record
+
+
+@pytest.mark.parametrize("transition", ["prepare_start", "update", "cancel"])
+def test_leaving_pending_clears_the_recorded_waiting_reason(tmp_path: Path, transition: str) -> None:
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    store.set_waiting({job.id: "Owner worker unavailable"})
+    assert _raw(store, job.id)["waiting_reason"] == "Owner worker unavailable"
+    if transition == "prepare_start":
+        assert store.prepare_start(job.id, ("GPU-a",), "{}")
+    elif transition == "update":
+        store.update(job.id, "running", devices=("GPU-a",))
+    else:
+        store.cancel(job.id)
+    raw = _raw(store, job.id)
+    assert raw["state"] != "pending"
+    assert raw["waiting_reason"] is None
+
+
+@pytest.mark.parametrize("state", ["starting", "running", "cancelling", "completed", "failed", "cancelled"])
+def test_stale_waiting_reason_on_disk_reads_as_none_without_a_write(tmp_path: Path, state: str) -> None:
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    public = store.public_path(job.id)
+    record = _raw(store, job.id)
+    # An older release left the last pending reason in non-pending records.
+    record |= {"state": state, "waiting_reason": "Owner worker unavailable"}
+    public.write_text(json.dumps(record), encoding="utf-8")
+    revision = store.view().revision
+    stored = public.read_bytes()
+    view = store.view()
+    assert view.jobs[0].state == state
+    assert view.jobs[0].waiting_reason is None
+    assert view.revision == revision
+    assert public.read_bytes() == stored
+
+
+def test_recovery_clears_a_stale_waiting_reason_on_disk(tmp_path: Path) -> None:
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    store.update(job.id, "recovery_required")
+    public = store.public_path(job.id)
+    stale = _raw(store, job.id) | {"waiting_reason": "Owner worker unavailable"}
+    public.write_text(json.dumps(stale), encoding="utf-8")
+    store.finish_recovery(job.id, lambda: None)
+    assert _raw(store, job.id)["waiting_reason"] is None
+
+
+def test_cancel_records_the_state_change_time(tmp_path: Path) -> None:
+    import time
+
+    store = _store(tmp_path / "queue")
+    pending, active = store.submit((_snapshot(tmp_path, "pending"), _snapshot(tmp_path, "active")))
+    assert pending.updated_at == 0
+    before = time.time()
+    cancelled = store.cancel(pending.id)
+    assert cancelled.state == "cancelled"
+    assert cancelled.updated_at >= before
+    assert _raw(store, pending.id)["updated_at"] == cancelled.updated_at
+
+    store.update(active.id, "running", devices=("GPU-a",))
+    before = time.time()
+    cancelling = store.cancel(active.id)
+    assert cancelling.state == "cancelling"
+    assert cancelling.updated_at >= before
+    assert _raw(store, active.id)["updated_at"] == cancelling.updated_at
+
+
+def test_cancel_of_recovery_required_job_keeps_the_record_unchanged(tmp_path: Path) -> None:
+    # Guard: cancel changes no state here, so it must not stamp updated_at either.
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    store.update(job.id, "recovery_required")
+    stored = store.public_path(job.id).read_bytes()
+    assert store.cancel(job.id).state == "recovery_required"
+    assert store.public_path(job.id).read_bytes() == stored
+
+
+def test_recovery_records_the_state_change_time(tmp_path: Path) -> None:
+    import time
+
+    store = _store(tmp_path / "queue")
+    job = store.submit((_snapshot(tmp_path),))[0]
+    store.update(job.id, "recovery_required")
+    before = time.time()
+    recovered = store.finish_recovery(job.id, lambda: None)
+    assert recovered.state == "cancelled"
+    assert recovered.updated_at >= before
+    assert _raw(store, job.id)["updated_at"] == recovered.updated_at

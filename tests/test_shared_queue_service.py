@@ -295,3 +295,42 @@ def test_list_explains_absent_worker_before_first_worker_tick(tmp_path: Path) ->
     assert service.list().jobs[0].waiting_reason == "Owner worker unavailable"
     assert store.view().revision == revision
     assert store.view().jobs[0].id == job.id
+
+
+def test_move_archive_and_restore_print_the_waiting_reasons_list_prints(tmp_path: Path) -> None:
+    from cy_queue.adapters.queue.runtime import QueueProcesses
+    from cy_queue.adapters.queue.storage import NFSQueueStore
+    from cy_queue.application.queue import QueueService
+    from cy_queue.core.queue import GPUObservation, JobSnapshot, QueueView, WorkerIdentity
+
+    class Inventory:
+        def snapshot(self) -> tuple[GPUObservation, ...]:
+            raise AssertionError("Queue mutations must not perform GPU discovery")
+
+    def reasons(view: QueueView) -> dict[str, str | None]:
+        return {job.id: job.waiting_reason for job in view.jobs if job.state == "pending"}
+
+    identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
+    store = NFSQueueStore(tmp_path / "queue", identity)
+    processes = QueueProcesses(store, identity, local_root=tmp_path / "local")
+    service = QueueService(store, Inventory(), processes, identity)
+    snapshot = JobSnapshot(
+        command="train",
+        config_json="{}",
+        project_root=str(tmp_path),
+        cwd=str(tmp_path),
+        interpreter=sys.executable,
+        package_version="1",
+        package_identity="hash",
+    )
+    finished, first, second = service.submit((snapshot, snapshot, snapshot))
+    store.update(finished.id, "completed")
+    # No worker tick has recorded a reason, so only a computed reason is non-empty.
+    assert all(job.waiting_reason is None for job in store.view().jobs)
+    expected = reasons(service.list())
+    assert expected == {first.id: "Owner worker unavailable", second.id: "Owner worker unavailable"}
+
+    assert reasons(service.move(second.id, "top", store.view().revision)) == expected
+    assert reasons(service.archive((finished.id,))) == expected
+    assert reasons(service.restore((finished.id,))) == expected
+    assert reasons(service.list()) == expected

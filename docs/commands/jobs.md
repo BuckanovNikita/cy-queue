@@ -75,12 +75,12 @@ cy-queue move [-h] --revision REVISION [--json] JOB {up,down,top,bottom,before,a
 
 ### Результат
 
-Команда печатает очередь так же, как `list` без флагов: первую строку с ревизией и строки заданий без архивных (формат строки описан в [list](list.md)). С `--json` печатается тот же объект, что у `list --json` ([JSON](../formats/json.md)).
+Команда печатает очередь так же, как `list` без флагов: первую строку с ревизией и строки заданий без архивных, с причинами ожидания и выделенными GPU, вычисленными так же, как в `list` (формат строки описан в [list](list.md)). С `--json` печатается тот же объект, что у `list --json` ([JSON](../formats/json.md)).
 
 ```text
 my-queue | gpu-host | revision 43 | archived 0 | warnings 0
-1	Job 17 · my-run	uid=1000	pending	request=1	allocation=-
-2	Job 12 · my-run	uid=1000	pending	request=1	allocation=-
+1	Job 17 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
+2	Job 12 · my-run	uid=1000	pending	request=1	allocation=-	Owner worker unavailable
 ```
 
 #### Коды завершения

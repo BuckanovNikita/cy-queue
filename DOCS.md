@@ -114,6 +114,8 @@ owned job; `archive`/`restore` take owned finished jobs.
   exit unless an operator frees it.
 - Cancel: verified owner gets up to 90 s to shut down and publish diagnostics, keeping its
   allocation; then verified whole-tree cleanup. Preserve logs and uncertain evidence.
+  A job cancelled after launch records error `Job was cancelled`, never its exit status;
+  a guardian failure keeps `Guardian operation failed: <type>`.
 - Guardian death or uncertain cleanup → `recovery_required`. Recovery needs conservative
   ownership discovery; inaccessible/ambiguous evidence blocks it. Heartbeat expiry, low
   memory or missing parents never prove cleanup. Storage failure stops new admission but
@@ -147,6 +149,11 @@ owned job; `archive`/`restore` take owned finished jobs.
   ClearML links. Human output uses readable references; JSON keeps documented fields,
   never private snapshots. Inspection never evaluates saved model config, recovers jobs
   or releases reservations.
+- Public record values follow the state: only a pending job has a wait reason (a stale one
+  in an older record reads as none); every state write, including cancel and recover, sets
+  `updated_at`; wait reason and progress writes do not. `list`, `move`, `archive` and
+  `restore` show local pending jobs with computed wait reasons and active jobs with their
+  reserved devices; `list --host` and jobs with a refresh warning show recorded values.
 - One unreadable private status/snapshot keeps its public summary with a transient
   warning; healthy jobs keep refreshing. Warning counts cover visible jobs only and clear
   after a successful refresh. Queue-wide config/manifest/coordination failure is an

@@ -53,6 +53,13 @@ def _job_id(identifier: str) -> str:
     return identifier
 
 
+def _current_reason(job: PublicJob) -> PublicJob:
+    """Hide a waiting reason that older releases left behind after the job left pending."""
+    if job.state != "pending" and job.waiting_reason is not None:
+        return job.model_copy(update={"waiting_reason": None})
+    return job
+
+
 def atomic_write(path: Path, payload: str, mode: int = 0o644) -> None:
     """Publish a complete, flushed record; never truncate a committed record."""
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
@@ -182,7 +189,7 @@ class NFSQueueStore:
             batch = _SubmissionBatch.model_validate_json(_read(path, uid))
             for identifier in batch.jobs:
                 public = actor / "jobs" / _job_id(identifier) / "public.json"
-                job = PublicJob.model_validate_json(_read(public, uid))
+                job = _current_reason(PublicJob.model_validate_json(_read(public, uid)))
                 if job.owner_uid != uid or job.host_id != host_id or job.id != identifier:
                     raise RuntimeError("Shared queue manifest identity mismatch")
                 jobs.append(job)
@@ -505,6 +512,8 @@ class NFSQueueStore:
             "error": error,
             "updated_at": time.time(),
         }
+        if state != "pending":
+            values["waiting_reason"] = None
         if devices is not None:
             values["devices"] = devices
         result = PublicJob.model_validate(job.model_dump() | values)
@@ -535,6 +544,7 @@ class NFSQueueStore:
                     "devices": devices,
                     "updated_at": time.time(),
                     "revision": job.revision + 1,
+                    "waiting_reason": None,
                 }
             )
             atomic_write(directory / "public.json", result.model_dump_json())
@@ -550,7 +560,14 @@ class NFSQueueStore:
                 atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
                 return job
             state: JobState = "cancelled" if job.state == "pending" else "cancelling"
-            result = job.model_copy(update={"state": state, "revision": job.revision + 1})
+            result = job.model_copy(
+                update={
+                    "state": state,
+                    "revision": job.revision + 1,
+                    "updated_at": time.time(),
+                    "waiting_reason": None,
+                }
+            )
             atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)
             atomic_write(self.actor_root / "jobs" / job.id / "public.json", result.model_dump_json())
             return result
@@ -591,6 +608,8 @@ class NFSQueueStore:
                 update={
                     "state": "cancelled",
                     "revision": job.revision + 1,
+                    "updated_at": time.time(),
+                    "waiting_reason": None,
                     "error": ("Owner recovered abandoned execution after verified descendant cleanup"),
                 }
             )
