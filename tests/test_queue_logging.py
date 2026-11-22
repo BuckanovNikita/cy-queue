@@ -278,3 +278,31 @@ def test_start_line_is_logged_only_for_an_accepted_worker(refuse: bool) -> None:
         logger.remove(sink)
     started = [message for message in messages if "Starting queue worker" in message]
     assert started == ([] if refuse else [start + "\n"])
+
+
+def test_second_worker_refused_by_the_real_registration_logs_no_start_line(tmp_path: Path) -> None:
+    from cy_queue.adapters.queue.runtime import QueueProcesses
+    from cy_queue.adapters.queue.storage import NFSQueueStore
+    from cy_queue.application.queue import QueueService
+    from cy_queue.core.queue import GPUObservation
+    from cy_queue.entrypoints import queue
+
+    class Inventory:
+        def snapshot(self) -> tuple[GPUObservation, ...]:
+            raise AssertionError("A refused worker must not probe GPUs")
+
+    identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
+    store = NFSQueueStore(tmp_path / "queue", identity)
+    first = QueueProcesses(store, identity, local_root=tmp_path / "local")
+    second = QueueProcesses(store, identity, local_root=tmp_path / "local")
+    service = QueueService(store, Inventory(), second, identity)
+    messages: list[str] = []
+    sink = logger.add(messages.append, format="{message}", level="INFO")
+    try:
+        with first.worker_registration():
+            with pytest.raises(RuntimeError, match="already registered"):
+                queue._worker(service, start_message="Starting queue worker | queue=Test")
+            assert (store.actor_root / "worker.json").exists()
+    finally:
+        logger.remove(sink)
+    assert [message for message in messages if "Starting queue worker" in message] == []

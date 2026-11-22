@@ -386,8 +386,10 @@ def test_binding_is_shared_readable_and_rejects_conflicting_location(tmp_path: P
     assert binding.read_bytes() == before
     with pytest.raises(RuntimeError, match="already bound") as refusal:
         bind_coordination_root("test-host", tmp_path / "other", bootstrap_root=bootstrap)
-    assert str(selected.resolve()) in str(refusal.value)
-    assert "maintenance" not in str(refusal.value)
+    assert str(refusal.value) == (
+        f"Host coordination is already bound to {selected.resolve()}, not {(tmp_path / 'other').resolve()}; "
+        "set coordination_root to the bound location"
+    )
     assert binding.read_bytes() == before
     assert not (tmp_path / "other").exists()
 
