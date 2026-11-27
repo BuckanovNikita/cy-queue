@@ -95,25 +95,6 @@ def _wait_cancelled(store: NFSQueueStore, processes: QueueProcesses, timeout: fl
     processes.refresh()
 
 
-def _short_guardian_grace(monkeypatch: pytest.MonkeyPatch) -> None:
-    original = subprocess.Popen
-
-    def launch(argv: list[str], **options: Any) -> subprocess.Popen[bytes]:
-        if argv[1:3] == ["-m", "cy_queue.adapters.queue.guardian"]:
-            argv = [
-                argv[0],
-                "-c",
-                (
-                    "from cy_queue.adapters.queue import guardian; "
-                    "guardian._OWNER_SHUTDOWN_GRACE_SECONDS=0.6; guardian.main()"
-                ),
-                argv[3],
-            ]
-        return original(argv, **options)
-
-    monkeypatch.setattr(subprocess, "Popen", launch)
-
-
 def test_cancellation_keeps_publishers_alive_and_capacity_owned_through_final_logs(
     tmp_path: Path,
 ) -> None:
@@ -190,10 +171,8 @@ publisher.wait(timeout=5)
         assert late_pid in dict(persisted["identities"])
 
 
-def test_ignored_owner_signal_escalates_at_deadline_despite_repeated_guardian_signals(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _short_guardian_grace(monkeypatch)
+@pytest.mark.usefixtures("short_guardian_grace")
+def test_ignored_owner_signal_escalates_at_deadline_despite_repeated_guardian_signals(tmp_path: Path) -> None:
     script = """
 import json,os,signal,subprocess,sys,time
 from pathlib import Path

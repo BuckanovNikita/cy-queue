@@ -10,7 +10,7 @@ from uuid import uuid4
 import pytest
 
 from cy_queue.core.queue import PublicJob, QueueView, ResourceRequest
-from queue_cli_helpers import queue_command, queue_environment
+from queue_cli_helpers import queue_command, queue_environment, queue_stdout
 
 
 def _job() -> PublicJob:
@@ -204,21 +204,7 @@ def test_cancel_of_recovery_required_job_hints_at_recover_in_text_mode_only(tmp_
 
 
 def test_real_cli_readable_submit_archive_restore(tmp_path: Path) -> None:
-    environment = queue_environment(tmp_path)
-    command = queue_command(tmp_path)
-
-    def run(*arguments: str) -> str:
-        result = subprocess.run(  # noqa: S603 - isolated real CLI
-            [*command, *arguments],
-            env=environment,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        return result.stdout
-
+    run = queue_stdout(tmp_path)
     submitted = run("submit", "--gpus", "1", "--label", "Old experiment", "--", "ground_truth=input.csv")
     assert submitted == "Submitted Job 1 · Old experiment\n"
     original = json.loads(run("list", "--json"))["jobs"][0]

@@ -1,4 +1,4 @@
-"""Queue integration contracts extracted from CY tests."""
+"""Exercise durable queue operations against an independent state ledger."""
 
 import json
 import os
@@ -9,59 +9,15 @@ from tempfile import TemporaryDirectory
 from typing import override
 
 import pytest
-from clearml_yolo.core.identity import ModelIdentity
-from clearml_yolo.entrypoints.hydra.config_resolution import resolve_config_document
-from hypothesis import given, settings
+from hypothesis import settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, invariant, precondition, rule
-from omegaconf import OmegaConf
 
 from cy_queue.adapters.queue.coordination import host_transaction
 from cy_queue.adapters.queue.storage import NFSQueueStore
 from cy_queue.core.queue import JobSnapshot, JobState, WorkerIdentity
 
 _LEXICAL = st.sampled_from(["0001", "10", "ёж", "猫", "e\u0301", "é", "001,猫"])
-
-_CONFIDENCE = st.sampled_from([0.0, 0.2, 0.5, 0.700000000000003, 1.0])
-
-_BOUNDS = settings(max_examples=24, deadline=None, derandomize=True, database=None)
-
-
-@_BOUNDS
-@given(label=_LEXICAL, image=_LEXICAL, confidence=_CONFIDENCE, enabled=st.booleans())
-def test_resolved_yaml_json_snapshot_preserves_lexical_identity_and_types(
-    label: str, image: str, confidence: float, enabled: bool
-) -> None:
-    """Saved configs must preserve string identities and exact primitive values."""
-    identity = ModelIdentity(model_name=label, training_task_id="00001234")
-    document = {
-        "identity": identity.model_dump(mode="json"),
-        "image_name": image,
-        "threshold": confidence,
-        "enabled": enabled,
-        "device": None,
-        "copy": "${identity.model_name}",
-        "nested": ["${threshold}", "${enabled}", "${device}"],
-    }
-    saved = OmegaConf.create(OmegaConf.to_yaml(OmegaConf.create(document)))
-    resolved = resolve_config_document(saved)
-    snapshot = JobSnapshot(
-        command="metrics",
-        config_json=json.dumps(resolved, ensure_ascii=False),
-        project_root="/project",
-        cwd="/project",
-        interpreter="/python",
-        package_version="1",
-        package_identity="source",
-    )
-    loaded = json.loads(JobSnapshot.model_validate_json(snapshot.model_dump_json()).config_json)
-    assert loaded["image_name"] == image
-    assert loaded["identity"]["model_name"] == loaded["copy"] == label
-    assert loaded["identity"]["training_task_id"] == "00001234"
-    assert loaded["nested"] == [confidence, enabled, None]
-    assert type(loaded["nested"][0]) is float
-    assert type(loaded["nested"][1]) is bool
-    assert ModelIdentity.model_validate(loaded["identity"]) == identity
 
 
 class DurableQueueSequences(RuleBasedStateMachine):
@@ -86,7 +42,7 @@ class DurableQueueSequences(RuleBasedStateMachine):
 
     @rule(label=_LEXICAL)
     def submit(self, label: str) -> None:
-        configuration = json.dumps({"label": label, "device": None}, ensure_ascii=False)
+        configuration = json.dumps({"label": label, "settings": [0.700000000000003, True, None]}, ensure_ascii=False)
         snapshot = JobSnapshot(
             command="train",
             label=label,

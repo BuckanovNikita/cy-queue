@@ -2,16 +2,18 @@
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from collections.abc import Iterator
 from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import pytest
 from clearml_yolo.adapters.runtime import bootstrap
 
-from ddp_gpu_harness import GPUOptions
+from ddp_gpu_harness import Evidence, GPUOptions
 
 
 @pytest.fixture
@@ -26,12 +28,24 @@ def queue_memory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return memory
 
 
-@pytest.fixture(autouse=True)
-def restore_clearml_owner_isolation(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Reset adapter ownership at test boundaries, never between sweep invocations."""
-    from clearml_yolo.adapters.clearml import session
+@pytest.fixture
+def short_guardian_grace(monkeypatch: pytest.MonkeyPatch) -> None:
+    original = subprocess.Popen
 
-    monkeypatch.setattr(session, "_INCOMPLETE_OWNER", session._IncompleteOwner())
+    def launch(argv: list[str], **options: Any) -> subprocess.Popen[bytes]:
+        if argv[1:3] == ["-m", "cy_queue.adapters.queue.guardian"]:
+            argv = [
+                argv[0],
+                "-c",
+                (
+                    "from cy_queue.adapters.queue import guardian; "
+                    "guardian._OWNER_SHUTDOWN_GRACE_SECONDS=0.6; guardian.main()"
+                ),
+                argv[3],
+            ]
+        return original(argv, **options)
+
+    monkeypatch.setattr(subprocess, "Popen", launch)
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +79,7 @@ def restore_runtime_configuration(tmp_path: Path) -> Iterator[None]:
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """The physical acceptance suite never starts implicitly."""
+    """Register the opt-in physical acceptance options."""
     group = parser.getgroup("physical DDP acceptance")
     group.addoption(
         "--run-ddp-gpu",
@@ -104,8 +118,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 @pytest.fixture
 def ddp_gpu_options(request: pytest.FixtureRequest) -> GPUOptions:
     """Retain evidence for explicit selections that omit authorization or required options."""
-    from ddp_gpu_harness import Evidence, GPUOptions
-
     config = request.config
     options = GPUOptions(
         devices=config.getoption("--ddp-devices"),

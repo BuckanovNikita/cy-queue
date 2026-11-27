@@ -8,7 +8,6 @@ import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -437,30 +436,12 @@ with processes.worker_registration():
             os.kill(native_pid, signal.SIGKILL)
 
 
-def test_repeated_guardian_signals_hold_capacity_until_ignoring_child_is_reaped(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+@pytest.mark.usefixtures("short_guardian_grace")
+def test_repeated_guardian_signals_hold_capacity_until_ignoring_child_is_reaped(tmp_path: Path) -> None:
     from cy_queue.adapters.queue.identity import process_birth
     from cy_queue.adapters.queue.runtime import QueueProcesses
     from cy_queue.adapters.queue.storage import NFSQueueStore
     from cy_queue.core.queue import JobSnapshot, WorkerIdentity
-
-    original = subprocess.Popen
-
-    def launch(argv: list[str], **options: Any) -> subprocess.Popen[bytes]:
-        if argv[1:3] == ["-m", "cy_queue.adapters.queue.guardian"]:
-            argv = [
-                argv[0],
-                "-c",
-                (
-                    "from cy_queue.adapters.queue import guardian; "
-                    "guardian._OWNER_SHUTDOWN_GRACE_SECONDS=0.6; guardian.main()"
-                ),
-                argv[3],
-            ]
-        return original(argv, **options)
-
-    monkeypatch.setattr(subprocess, "Popen", launch)
 
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
     store = NFSQueueStore(tmp_path / "queue", identity)

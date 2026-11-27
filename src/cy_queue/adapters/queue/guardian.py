@@ -76,7 +76,7 @@ def _reap_adopted() -> None:
 
 @defer_interruptions()
 def cleanup_tree(tree: LinuxProcessTree, *, adopted_parent: int | None = None) -> None:
-    """Verified cleanup, including detached/adopted children; uncertainty raises."""
+    """Terminate the process tree and raise if cleanup cannot be verified."""
     tree.terminate(adopted_parent=adopted_parent)
 
 

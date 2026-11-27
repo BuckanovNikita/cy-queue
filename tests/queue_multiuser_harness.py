@@ -576,15 +576,19 @@ def _exercise(fixture: _Fixture, checks: list[str]) -> None:
         fixture.actor(label, "foreign")
         fixture.actor(label, "reorder")
         fixture.actor(label, "binding")
-    checks.append(
-        "Public summaries were readable; private snapshots and foreign record writes "
-        "were denied by real filesystem permissions."
+    checks.extend(
+        (
+            (
+                "Public summaries were readable; private snapshots and foreign record writes "
+                "were denied by real filesystem permissions."
+            ),
+            (
+                "Foreign cancellation, update, archive, restore, recovery and execution were refused; "
+                "both users could reorder the other's pending job."
+            ),
+            "Both users rejected a conflicting coordination root without creating it.",
+        )
     )
-    checks.append(
-        "Foreign cancellation, update, archive, restore, recovery and execution were refused; "
-        "both users could reorder the other's pending job."
-    )
-    checks.append("Both users rejected a conflicting coordination root without creating it.")
     for label, other in (("A", "B"), ("B", "A")):
         archived = fixture.actor(label, "archive")
         assert archived == fixture.actor(other, "inspect")

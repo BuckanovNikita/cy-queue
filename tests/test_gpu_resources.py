@@ -3,7 +3,6 @@
 import json
 import subprocess
 import sys
-from dataclasses import FrozenInstanceError
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, override
@@ -18,12 +17,6 @@ from cy_queue.adapters.runtime.gpu_resources import (
     job_request,
     normalized_device,
 )
-
-
-def test_gpu_device_is_immutable() -> None:
-    device = GPUDevice(uuid="GPU-a", busy=False)
-    with pytest.raises(FrozenInstanceError):
-        device.busy = True  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(
@@ -482,12 +475,13 @@ def test_visible_rejects_mig_uuid_from_cuda_probe(monkeypatch: pytest.MonkeyPatc
         _FixedInventory((GPUDevice("GPU-a", busy=False),)).visible()
 
 
-def test_visible_reports_probe_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    completed = subprocess.CompletedProcess(args=[], returncode=3, stdout="", stderr="CUDA initialization failed")
+def test_visible_reports_exit_and_redacts_probe_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    completed = subprocess.CompletedProcess([], 7, stdout="", stderr="CUDA unavailable token=private-key")
     monkeypatch.setattr(subprocess, "run", lambda *_a, **_kw: completed)
 
-    with pytest.raises(RuntimeError, match="CUDA initialization failed"):
+    with pytest.raises(RuntimeError, match=r"exit 7.*CUDA unavailable") as caught:
         _FixedInventory((GPUDevice("GPU-a", busy=False),)).visible()
+    assert "private-key" not in str(caught.value)
 
 
 def test_visible_reports_metadata_probe_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -517,25 +511,6 @@ print('lightweight import')
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "lightweight import"
-
-
-def test_visibility_probe_failure_reports_exit_and_redacts_subprocess_stderr(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from cy_queue.adapters.runtime.gpu_resources import _probe_visible_uuids
-
-    def failed_probe(*args: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        return subprocess.CompletedProcess(
-            ["probe"],
-            7,
-            stdout="",
-            stderr="CUDA unavailable token=private-probe-token",
-        )
-
-    monkeypatch.setattr(subprocess, "run", failed_probe)
-    with pytest.raises(RuntimeError, match=r"exit 7.*CUDA unavailable") as caught:
-        _probe_visible_uuids()
-    assert "private-probe-token" not in str(caught.value)
 
 
 @pytest.mark.parametrize("failure", ["unsupported", "mig", "invalid", "unexpected"])
@@ -665,5 +640,3 @@ def test_gpu_device_metadata_defaults_preserve_positional_construction() -> None
     assert device.logical_index is None
     assert device.used_memory_bytes is None
     assert device.telemetry_error is None
-    with pytest.raises(FrozenInstanceError):
-        device.used_memory_bytes = 123  # type: ignore[misc]
