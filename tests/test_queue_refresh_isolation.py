@@ -17,10 +17,11 @@ class _NoGPUs:
         return ()
 
 
-def _service(project: Path) -> QueueService:
+def _service(project: Path) -> tuple[QueueService, NFSQueueStore, QueueProcesses]:
     identity = WorkerIdentity(owner_uid=os.geteuid(), host_id="host", boot_id="boot")
     store = NFSQueueStore(project / "queue", identity)
-    return QueueService(store, _NoGPUs(), QueueProcesses(store, identity, local_root=project / "local"), identity)
+    processes = QueueProcesses(store, identity, local_root=project / "local")
+    return QueueService(store, _NoGPUs(), processes, identity), store, processes
 
 
 def _snapshot(project: Path, label: str) -> JobSnapshot:
@@ -34,20 +35,6 @@ def _snapshot(project: Path, label: str) -> JobSnapshot:
         package_version="0.1.0",
         package_identity="old-package-identity",
     )
-
-
-def test_missing_snapshot_retains_all_public_rows(tmp_path: Path) -> None:
-    service = _service(tmp_path)
-    broken, healthy = service.submit((_snapshot(tmp_path, "old"), _snapshot(tmp_path, "healthy")))
-    store = service.storage
-    assert isinstance(store, NFSQueueStore)
-    store.snapshot_path(broken.id).unlink()
-
-    view = service.list()
-
-    assert tuple(job.id for job in view.jobs) == (broken.id, healthy.id)
-    assert tuple(issue.job_id for issue in view.refresh_issues) == (broken.id,)
-    assert "secret-value" not in view.model_dump_json()
 
 
 def _status(project: Path, identifier: str, progress: str) -> Path:
@@ -71,9 +58,7 @@ def _replace_snapshot(store: NFSQueueStore, identifier: str, payload: str) -> No
     public.write_text(json.dumps(record))
 
 
-def _damage_snapshot(
-    store: NFSQueueStore, identifier: str, other: str, project: Path, fault: str, original: str
-) -> None:
+def _damage_snapshot(store: NFSQueueStore, identifier: str, other: str, project: Path, fault: str) -> None:
     import json
 
     path = store.snapshot_path(identifier)
@@ -85,7 +70,7 @@ def _damage_snapshot(
         case "hash":
             path.write_text("secret-value")
         case "identity":
-            record = json.loads(original)
+            record = json.loads(path.read_text())
             record["id"] = other
             _replace_snapshot(store, identifier, json.dumps(record))
         case "permissions":
@@ -99,10 +84,8 @@ def _damage_snapshot(
 @pytest.mark.parametrize("fault", ["missing", "malformed", "hash", "identity", "permissions", "status"])
 @pytest.mark.parametrize("state", ["pending", "completed", "archived"])
 def test_mixed_queue_preserves_summaries_and_recovers(tmp_path: Path, fault: str, state: str) -> None:
-    service = _service(tmp_path)
+    service, store, _ = _service(tmp_path)
     broken, healthy = service.submit((_snapshot(tmp_path, "old"), _snapshot(tmp_path, "healthy")))
-    store = service.storage
-    assert isinstance(store, NFSQueueStore)
     if state != "pending":
         store.update(broken.id, "completed")
     if state == "archived":
@@ -112,7 +95,7 @@ def test_mixed_queue_preserves_summaries_and_recovers(tmp_path: Path, fault: str
     path = store.snapshot_path(broken.id)
     original = path.read_text()
     original_public = store.public_path(broken.id).read_text()
-    _damage_snapshot(store, broken.id, healthy.id, tmp_path, fault, original)
+    _damage_snapshot(store, broken.id, healthy.id, tmp_path, fault)
     _status(tmp_path, healthy.id, "healthy progress")
     before = store.public_path(broken.id).read_bytes()
 
@@ -145,12 +128,8 @@ def test_mixed_queue_preserves_summaries_and_recovers(tmp_path: Path, fault: str
 def test_monitoring_never_changes_outcome_or_releases_reservation(tmp_path: Path, state: JobState) -> None:
     from cy_queue.core.queue import GuardianClaim
 
-    service = _service(tmp_path)
+    service, store, processes = _service(tmp_path)
     job = service.submit((_snapshot(tmp_path, "old"),))[0]
-    store = service.storage
-    processes = service.processes
-    assert isinstance(store, NFSQueueStore)
-    assert isinstance(processes, QueueProcesses)
     store.update(job.id, state)
     claim = GuardianClaim(
         job_id=job.id,
@@ -183,10 +162,8 @@ def test_monitoring_never_changes_outcome_or_releases_reservation(tmp_path: Path
 def test_strict_refresh_and_admission_still_reject_broken_snapshot(tmp_path: Path) -> None:
     from cy_queue.adapters.queue.storage import PrivateSnapshotError
 
-    service = _service(tmp_path)
+    service, store, _ = _service(tmp_path)
     job = service.submit((_snapshot(tmp_path, "old"),))[0]
-    store = service.storage
-    assert isinstance(store, NFSQueueStore)
     store.snapshot_path(job.id).write_text("corrupt")
     for action in (service.processes.refresh, service.tick):
         with pytest.raises(PrivateSnapshotError, match="hash"):
@@ -198,10 +175,8 @@ def test_strict_refresh_and_admission_still_reject_broken_snapshot(tmp_path: Pat
 
 
 def test_invalid_public_record_is_queue_wide_error(tmp_path: Path) -> None:
-    service = _service(tmp_path)
+    service, store, _ = _service(tmp_path)
     job = service.submit((_snapshot(tmp_path, "old"),))[0]
-    store = service.storage
-    assert isinstance(store, NFSQueueStore)
     store.public_path(job.id).write_text('{"protocol":999}')
     with pytest.raises(RuntimeError, match="corrupt"):
         service.list()
@@ -210,7 +185,7 @@ def test_invalid_public_record_is_queue_wide_error(tmp_path: Path) -> None:
 def test_publication_failure_is_not_a_private_refresh_warning(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from cy_queue.adapters.queue import storage
 
-    service = _service(tmp_path)
+    service, _, _ = _service(tmp_path)
     job = service.submit((_snapshot(tmp_path, "old"),))[0]
     _status(tmp_path, job.id, "new progress")
 
@@ -228,10 +203,8 @@ def test_coordination_failure_during_snapshot_read_remains_queue_wide(
     from collections.abc import Iterator
     from contextlib import contextmanager
 
-    service = _service(tmp_path)
+    service, store, _ = _service(tmp_path)
     service.submit((_snapshot(tmp_path, "old"),))
-    store = service.storage
-    assert isinstance(store, NFSQueueStore)
     transaction = store.transaction
     count = 0
 
@@ -255,7 +228,7 @@ def test_legacy_snapshot_is_viewable_without_hydra_and_execution_stays_strict(
     import json
     import subprocess
 
-    service = _service(tmp_path)
+    service, _, _ = _service(tmp_path)
     legacy = _snapshot(tmp_path, "legacy").model_copy(
         update={"config_json": '{"legacy_settings":{"unknown":"${old:resolver}"}}'}
     )
@@ -299,25 +272,10 @@ print(service.list().model_dump_json())
 
 def test_real_cli_lists_healthy_and_missing_snapshot_jobs(tmp_path: Path) -> None:
     import json
-    import subprocess
 
-    from queue_cli_helpers import queue_command, queue_environment
+    from queue_cli_helpers import queue_stdout
 
-    command = queue_command(tmp_path)
-    environment = queue_environment(tmp_path)
-
-    def run(*arguments: str) -> str:
-        result = subprocess.run(  # noqa: S603 - isolated real queue CLI
-            [*command, *arguments],
-            env=environment,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-        assert result.returncode == 0, result.stderr
-        return result.stdout
-
+    run = queue_stdout(tmp_path)
     for label in ("old", "healthy"):
         run("submit", "--gpus", "1", "--label", label, "--", "ground_truth=input.csv")
     initial = json.loads(run("list", "--json"))

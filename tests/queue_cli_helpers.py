@@ -2,7 +2,9 @@
 
 import json
 import os
+import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -38,6 +40,25 @@ coordination.bind_coordination_root = lambda host, root: bind(
 main()
 """.replace("BOOTSTRAP", repr(str(root / "bootstrap")))
     return [sys.executable, "-c", script]
+
+
+def queue_stdout(root: Path) -> Callable[..., str]:
+    environment = queue_environment(root)
+    command = queue_command(root)
+
+    def run(*arguments: str) -> str:
+        result = subprocess.run(  # noqa: S603 - isolated real CLI
+            [*command, *arguments],
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout
+
+    return run
 
 
 def configure_queue(root: Path, monkeypatch: pytest.MonkeyPatch) -> None:

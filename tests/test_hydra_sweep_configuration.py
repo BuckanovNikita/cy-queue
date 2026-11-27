@@ -5,10 +5,11 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
 
 from cy_queue.core.queue import ResourceRequest
-from cy_queue.entrypoints.hydra.queue_config import compose_snapshots
+from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, write_execution_config
 from queue_cli_helpers import queue_command, queue_environment
 
 
@@ -102,3 +103,35 @@ def test_nonsequential_sweep_plugins_are_rejected_before_instantiation(tmp_path:
             ResourceRequest(gpus=1),
             project_root=tmp_path,
         )
+
+
+@pytest.mark.parametrize(
+    ("weight_decay", "expected"),
+    [(None, [0.02]), ("0.03", [0.03]), ("0.03,0.04", [0.03, 0.04])],
+)
+def test_worker_config_preserves_training_overrides_and_binds_allocated_devices(
+    tmp_path: Path, weight_decay: str | None, expected: list[float]
+) -> None:
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    (config_dir / "chosen.yaml").write_text(
+        "defaults:\n  - pipeline\n  - _self_\nground_truth: input.csv\n"
+        "ultralytics:\n  weight_decay: 0.02\n  compile: false\n"
+        "skip_predict: true\nskip_metrics: true\nskip_compare: true\nskip_report: true\n"
+        "fiftyone:\n  enabled: false\n"
+    )
+    arguments = ["--config-dir", str(config_dir), "--config-name", "chosen"]
+    if weight_decay is not None:
+        arguments.append(f"ultralytics.weight_decay={weight_decay}")
+    if weight_decay is not None and "," in weight_decay:
+        arguments.append("-m")
+    snapshots = compose_snapshots(arguments, ResourceRequest(gpus=2), project_root=tmp_path)
+    for index, (snapshot, decay) in enumerate(zip(snapshots, expected, strict=True)):
+        assert json.loads(snapshot.config_json)["ultralytics"]["weight_decay"] == decay
+        worker_dir = tmp_path / f"worker-{index}"
+        worker_dir.mkdir()
+        executable = write_execution_config(snapshot, 2, worker_dir)
+        with initialize_config_dir(config_dir=str(worker_dir), version_base="1.3"):
+            settings = compose(config_name=executable.stem).ultralytics
+        assert settings.weight_decay == decay
+        assert settings.device == [0, 1]

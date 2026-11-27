@@ -2,7 +2,7 @@
 
 import json
 import tomllib
-from importlib.metadata import version
+from importlib.metadata import requires, version
 from pathlib import Path
 
 import clearml_yolo
@@ -14,21 +14,16 @@ from cy_queue.entrypoints.hydra.queue_config import compose_snapshots, validate_
 from cy_queue.entrypoints.queue import _parser
 
 
-def test_supported_cy_requirement_declares_only_a_minimum() -> None:
-    queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
-    requirement = next(
-        parsed for value in queue["dependencies"] if (parsed := Requirement(value)).name == "clearml-yolo"
-    )
-    assert [spec.operator for spec in requirement.specifier] == [">="], str(requirement)
-    for later in ("0.45.0", "0.46.0", "0.47.0", "1.0.0"):
-        assert requirement.specifier.contains(later), later
-
-
 def test_current_source_and_installed_versions_are_compatible() -> None:
     queue = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
     requirement = next(
         parsed for value in queue["dependencies"] if (parsed := Requirement(value)).name == "clearml-yolo"
     )
+    assert [spec.operator for spec in requirement.specifier] == [">="], str(requirement)
+    installed_requirement = next(
+        parsed for value in requires("cy-queue") or () if (parsed := Requirement(value)).name == "clearml-yolo"
+    )
+    assert installed_requirement == requirement, "Reinstall changed queue dependency metadata"
     installed_cy = version("clearml-yolo")
     assert requirement.specifier.contains(installed_cy), str(requirement)
     assert version("cy-queue") == queue["version"], "Reinstall changed queue source metadata"
@@ -38,7 +33,6 @@ def test_current_source_and_installed_versions_are_compatible() -> None:
     if cy_metadata.is_file():
         cy = tomllib.loads(cy_metadata.read_text())["project"]
         assert cy["name"] == "clearml-yolo"
-        assert requirement.specifier.contains(cy["version"]), str(requirement)
         assert installed_cy == cy["version"], "Reinstall changed CY source metadata"
 
 
@@ -129,26 +123,19 @@ def test_installed_packages_and_console_entrypoint_work_outside_checkout(tmp_pat
 
     code = """
 from importlib.metadata import distribution
-from packaging.requirements import Requirement
-import clearml_yolo
-import cy_queue
-queue = distribution('cy-queue')
-requirement = next(Requirement(text) for text in queue.requires
-                   if Requirement(text).name == 'clearml-yolo')
-assert requirement.specifier.contains(distribution('clearml-yolo').version), str(requirement)
-entry = next(item for item in queue.entry_points if item.name == 'cy-queue')
-assert entry.value == 'cy_queue.entrypoints.queue:main'
-assert callable(entry.load())
-assert clearml_yolo.__file__ != cy_queue.__file__
+entry = next(item for item in distribution('cy-queue').entry_points
+             if item.group == 'console_scripts' and item.name == 'cy-queue')
+entry.load()()
 """
     result = subprocess.run(  # noqa: S603 - installed source package verification, no effects
-        [sys.executable, "-I", "-c", code],
+        [sys.executable, "-I", "-c", code, "--help"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
         check=False,
     )
     assert result.returncode == 0, result.stderr
+    assert "usage: cy-queue" in result.stdout
 
 
 @pytest.mark.parametrize("package", ["clearml_yolo", "cy_queue"])

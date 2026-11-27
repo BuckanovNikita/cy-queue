@@ -123,22 +123,6 @@ def _card() -> GPUControlStatus:
     )
 
 
-def test_gpu_list_public_view_omits_nested_claim_tokens_and_raw_devices() -> None:
-    from cy_queue.entrypoints.queue_presentation import QueuePresentation
-
-    card = _card()
-    assert card.claim is not None
-    result = QueuePresentation({GPU_A: 0, GPU_B: 2}).gpu(card)
-    rendered = json.dumps(result)
-    assert result["gpu"] == "2"
-    claim_view = result["claim"]
-    assert isinstance(claim_view, dict)
-    assert claim_view["devices"] == ["2", "0"]
-    assert all(value not in rendered for value in (GPU_A, GPU_B, "e" * 64))
-    assert "claim_token" not in rendered
-    assert "private-marker" not in rendered
-
-
 @pytest.mark.parametrize("as_json", [False, True])
 def test_gpu_list_cli_projects_internal_control_records(capsys: pytest.CaptureFixture[str], *, as_json: bool) -> None:
     from cy_queue.application.queue import QueueGPUControlPort
@@ -157,6 +141,8 @@ def test_gpu_list_cli_projects_internal_control_records(capsys: pytest.CaptureFi
     assert GPU_B not in rendered
     assert "e" * 64 not in rendered
     assert "claim-token" not in rendered
+    assert "claim_token" not in rendered
+    assert "private-marker" not in rendered
     if as_json:
         result = json.loads(rendered)
         assert result[0]["gpu"] == "2"

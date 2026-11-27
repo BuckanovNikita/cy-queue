@@ -554,7 +554,7 @@ class NFSQueueStore:
         with self.transaction():
             job = self._find(identifier)
             self._require_owner(job)
-            if job.state in {"completed", "failed", "cancelled"}:
+            if job.state in TERMINAL_JOB_STATES:
                 return job
             if job.state == "recovery_required":
                 atomic_write(self.actor_root / "jobs" / job.id / "cancel.json", '{"protocol":1}', 0o600)

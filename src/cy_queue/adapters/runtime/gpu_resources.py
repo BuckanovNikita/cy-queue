@@ -3,7 +3,8 @@
 import json
 import subprocess
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from importlib import import_module
 from typing import Any, Literal, Protocol, cast
@@ -57,6 +58,16 @@ def _nvml() -> _NVML:
     return cast(_NVML, import_module("pynvml"))
 
 
+@contextmanager
+def _nvml_session() -> Iterator[_NVML]:
+    nvml = _nvml()
+    nvml.nvmlInit()
+    try:
+        yield nvml
+    finally:
+        nvml.nvmlShutdown()
+
+
 def _device_error(value: object) -> ValueError:
     return ValueError(f"Unsupported native device value: {value!r}")
 
@@ -76,13 +87,8 @@ def _string_device_count(value: str) -> int:
     cuda_prefixed = selection.startswith("cuda:")
     ordinals = selection[5:] if cuda_prefixed else selection
     parts = [part.strip() for part in ordinals.split(",")]
-    if not parts or any(not part for part in parts):
-        raise _device_error(value)
     for part in parts:
-        if cuda_prefixed:
-            if not part.isdigit():
-                raise _device_error(value)
-        elif part != "-1" and not part.isdigit():
+        if not part.isdigit() and (cuda_prefixed or part != "-1"):
             raise _device_error(value)
     return len(parts)
 
@@ -91,8 +97,6 @@ def device_count(value: object) -> int:
     """Derive GPU demand from one native device selector."""
     if value is None:
         return 1
-    if isinstance(value, bool):
-        raise _device_error(value)
     if isinstance(value, int):
         _device_id(value)
         return 1
@@ -293,18 +297,11 @@ class GPUInventory:
 
     def _physical_uuids(self) -> tuple[str, ...]:
         """Map physical identities independently of memory and MIG telemetry."""
-        nvml = _nvml()
-        initialized = False
-        try:
-            nvml.nvmlInit()
-            initialized = True
+        with _nvml_session() as nvml:
             return tuple(
                 _uuid(nvml.nvmlDeviceGetUUID(nvml.nvmlDeviceGetHandleByIndex(index)))
                 for index in range(nvml.nvmlDeviceGetCount())
             )
-        finally:
-            if initialized:
-                nvml.nvmlShutdown()
 
     def _memory_used(self, nvml: _NVML, handle: Any, label: str, *, memory_only: bool) -> int:
         if not memory_only:
@@ -340,15 +337,11 @@ class GPUInventory:
 
         With no visibility discovery or explicit scope, all physical GPUs are required.
         """
-        nvml = _nvml()
-        initialized = False
         required = self._required_uuids
         if required is None:
             required = self._visible_uuids
         logical_indexes = {uuid: index for index, uuid in enumerate(self._visible_uuids or ())}
-        try:
-            nvml.nvmlInit()
-            initialized = True
+        with _nvml_session() as nvml:
             devices: list[GPUDevice] = []
             for index in range(nvml.nvmlDeviceGetCount()):
                 handle = nvml.nvmlDeviceGetHandleByIndex(index)
@@ -389,9 +382,6 @@ class GPUInventory:
                         + ", ".join(identity_label(uuid) for uuid in sorted(missing))
                     )
             return tuple(devices)
-        finally:
-            if initialized:
-                nvml.nvmlShutdown()
 
     @trace_operation("gpu.visibility")
     def visible(self) -> tuple[str, ...]:

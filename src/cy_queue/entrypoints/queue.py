@@ -15,6 +15,7 @@ from loguru import logger
 
 from cy_queue.application.queue import QueueGPUControlPort, QueueService
 from cy_queue.core.queue import (
+    TERMINAL_JOB_STATES,
     MoveDirection,
     PublicJob,
     QueueView,
@@ -80,16 +81,16 @@ def _parser() -> argparse.ArgumentParser:
     operations = gpu.add_subparsers(dest="gpu_action", required=True)
     gpu_list = operations.add_parser("list", help="List physical GPU numbers, holds and jobs")
     gpu_list.add_argument("--json", action="store_true")
-    disable = operations.add_parser("disable", help="Hold a physical GPU for this Unix owner")
-    disable.add_argument("selector", help="Physical GPU number or displayed short GPU label")
-    disable.add_argument("--json", action="store_true")
-    enable = operations.add_parser("enable", help="Remove only your hold on a physical GPU")
-    enable.add_argument("selector", help="Physical GPU number or displayed short GPU label")
-    enable.add_argument("--json", action="store_true")
-    for action in ("free", "release"):
-        release = operations.add_parser(action, help="Free one GPU's reservation and holds")
-        release.add_argument("selector", help="Physical GPU number or displayed short GPU label")
-        release.add_argument("--json", action="store_true")
+    free_help = "Free one GPU's reservation and holds"
+    for action, description in (
+        ("disable", "Hold a physical GPU for this Unix owner"),
+        ("enable", "Remove only your hold on a physical GPU"),
+        ("free", free_help),
+        ("release", free_help),
+    ):
+        command = operations.add_parser(action, help=description)
+        command.add_argument("selector", help="Physical GPU number or displayed short GPU label")
+        command.add_argument("--json", action="store_true")
     return parser
 
 
@@ -225,7 +226,7 @@ class _WorkerLog:
             if previous == status:
                 continue
             # Existing completed history is counted, without replaying every old job.
-            if initial and job.state in {"completed", "failed", "cancelled"}:
+            if initial and job.state in TERMINAL_JOB_STATES:
                 continue
             # Progress from leftover processes of a failed job is evidence, not a new failure.
             alarming = previous is None or previous[0] != job.state or previous[4] != job.error
@@ -249,7 +250,7 @@ class _WorkerLog:
         self._jobs = current
         counts = Counter(job.state for job in jobs)
         summary = " ".join(f"{state}={count}" for state, count in sorted(counts.items()))
-        active = any(job.state in {"pending", "starting", "running", "cancelling", "recovery_required"} for job in jobs)
+        active = any(job.state not in TERMINAL_JOB_STATES for job in jobs)
         now = time.monotonic()
         if self._last_heartbeat is None or now - self._last_heartbeat >= _HEARTBEAT_SECONDS:
             logger.info("Worker heartbeat | {} | {}", "active" if active else "idle", summary or "no jobs")
@@ -359,7 +360,6 @@ def _execute(arguments: argparse.Namespace) -> None:
         QueueGPUInventory(max_used_memory_gib=settings.max_used_memory_gib),
         processes,
         identity,
-        controls=GPUControls(processes.pool),
     )
     start_message: str | None = None
     if arguments.action == "worker":

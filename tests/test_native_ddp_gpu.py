@@ -1,7 +1,5 @@
 """Explicit physical CUDA/NCCL acceptance; never selected by ordinary pytest."""
 
-from pathlib import Path
-
 import pytest
 
 from ddp_gpu_harness import GPUOptions, run_scenario
@@ -19,5 +17,5 @@ def test_physical_native_pipeline(ddp_gpu_options: GPUOptions, queued: bool, com
 
 @pytest.mark.parametrize("scenario", ["queued-rank-exit", "queued-cancel", "queued-guardian-death"])
 def test_physical_queued_failure_cleanup(ddp_gpu_options: GPUOptions, scenario: str) -> None:
-    root: Path = run_scenario(ddp_gpu_options, scenario, queued=True, compiled=False)
+    root = run_scenario(ddp_gpu_options, scenario, queued=True, compiled=False)
     assert (root / "cleanup.json").is_file()
