@@ -166,8 +166,8 @@ lint-imports
   issues, PRs and evidence both ways; keep issues open until the PR merges.
 - Stacks: first PR targets `main`, children target their parent branch; humans merge
   bottom-up, then restack, inspect diffs and repeat affected checks and review. Rewrite
-  only task-owned branches, with `--force-with-lease`. Do not assume GitHub checks,
-  branch protection or Linear automation is configured.
+  only task-owned branches, with `--force-with-lease`. Do not assume GitHub checks
+  or Linear automation is configured (the `main` ruleset is described below).
 - A human merge into `main` triggers an automatic release: a version commit and an
   annotated `v{version}` tag only (no GitHub Release, package or deployment).
   `.github/workflows/release.yml` runs only for merged PRs, one at a time. Semantic Release
@@ -177,10 +177,13 @@ lint-imports
   only `pyproject.toml`/`CHANGELOG.md` with an annotated tag and a higher version, pushes
   both atomically and never force-pushes. After an uncertain push, inspect remote refs
   before rerunning; an already published release reruns as a no-op. The job needs
-  `GITHUB_TOKEN` with `contents: write`; never overwrite an existing tag. Unmerged
+  `contents: write` and pushes over SSH with the deploy key in secret `RELEASE_DEPLOY_KEY`;
+  never overwrite an existing tag. Unmerged
   closures, plain pushes and tag creation do not release; closely spaced merges may share
-  one release. Repository rules must permit the bot commit on `main`; if they block it,
-  arrange explicit release-bot authorization without weakening human branch protection.
+  one release. The `main` ruleset requires PRs and blocks force pushes and deletion; it lists deploy keys as
+  bypass actors, because `GITHUB_TOKEN` cannot bypass a ruleset on a user-owned repository. Do
+  not add required signatures, linear history or a required status check without changing the
+  release job.
   A local rehearsal is no evidence of GitHub permissions. After a release, record the
   workflow run, source and release SHAs, version and confirmed remote tag identity in the
   Linear issue.
